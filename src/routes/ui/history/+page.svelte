@@ -67,7 +67,7 @@
 				</Button>
 			</div>
 
-			<h2 class="mb-4 text-xl font-semibold">{$currentConversationConversation?.title}</h2>
+			<h2 class="mb-4 text-xl font-semibold">{$currentConversationStore?.title}</h2>
 
 			<!-- Display stages based on conversation state -->
 			<div class="space-y-8">
