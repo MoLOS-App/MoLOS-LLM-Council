@@ -7,14 +7,14 @@ import { CouncilStage, MessageRole } from '../../models';
  * LLM Council module table schema
  * Stores all council-related data: Conversations, Messages, and Settings
  *
- * Fields follow naming convention: MoLOS_LLM_Council_{entity_type}
+ * Fields follow naming convention: MoLOS-LLM-Council_{entity_type}
  * All timestamps are stored as unix timestamps (seconds)
  */
 
 /**
  * Conversations - Council sessions
  */
-export const councilConversations = sqliteTable('MoLOS_LLM_Council_conversations', {
+export const councilConversations = sqliteTable('MoLOS-LLM-Council_conversations', {
 	id: text('id')
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
@@ -36,7 +36,7 @@ export const councilConversations = sqliteTable('MoLOS_LLM_Council_conversations
 /**
  * Messages - Individual responses from models
  */
-export const councilMessages = sqliteTable('MoLOS_LLM_Council_messages', {
+export const councilMessages = sqliteTable('MoLOS-LLM-Council_messages', {
 	id: text('id')
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
@@ -60,7 +60,7 @@ export const councilMessages = sqliteTable('MoLOS_LLM_Council_messages', {
 /**
  * Settings - User preferences for the LLM Council module
  */
-export const councilSettings = sqliteTable('MoLOS_LLM_Council_settings', {
+export const councilSettings = sqliteTable('MoLOS-LLM-Council_settings', {
 	userId: text('user_id').primaryKey(),
 	openrouterApiKey: text('openrouter_api_key'),
 	defaultModels: text('default_models', { mode: 'json' })
