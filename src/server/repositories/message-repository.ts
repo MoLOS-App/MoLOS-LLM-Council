@@ -1,4 +1,4 @@
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, like, desc } from 'drizzle-orm';
 import { councilMessages } from '../database/schema';
 import type {
 	Message,
@@ -115,5 +115,21 @@ export class MessageRepository {
 			.where(and(eq(councilMessages.id, id), eq(councilMessages.userId, userId)));
 
 		return result.changes > 0;
+	}
+
+	async searchByUserId(
+		userId: string,
+		query: string,
+		limit: number = 20
+	): Promise<Message[]> {
+		const term = `%${query}%`;
+		const result = await this.db
+			.select()
+			.from(councilMessages)
+			.where(and(eq(councilMessages.userId, userId), like(councilMessages.content, term)))
+			.orderBy(desc(councilMessages.createdAt))
+			.limit(limit);
+
+		return result.map((row) => this.mapToMessage(row));
 	}
 }

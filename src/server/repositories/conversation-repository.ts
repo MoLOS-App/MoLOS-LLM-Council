@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, like } from 'drizzle-orm';
 import { councilConversations } from '../database/schema';
 import type { Conversation, CouncilStage, CreateConversationInput } from '../../models';
 import { db as defaultDb } from '$lib/server/db';
@@ -98,5 +98,21 @@ export class ConversationRepository {
 			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)));
 
 		return result.changes > 0;
+	}
+
+	async searchByUserId(
+		userId: string,
+		query: string,
+		limit: number = 20
+	): Promise<Conversation[]> {
+		const term = `%${query}%`;
+		const result = await this.db
+			.select()
+			.from(councilConversations)
+			.where(and(eq(councilConversations.userId, userId), like(councilConversations.title, term)))
+			.orderBy(desc(councilConversations.updatedAt))
+			.limit(limit);
+
+		return result.map((row) => this.mapToConversation(row));
 	}
 }
