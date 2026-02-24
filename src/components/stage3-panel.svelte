@@ -21,18 +21,14 @@
 	}
 </script>
 
-<div class="space-y-4">
-	<div class="flex items-center gap-2">
-		<Sparkles class="h-5 w-5 text-amber-500" />
-		<h3 class="font-semibold">Stage 3: Final Synthesis</h3>
+<div class="space-y-3">
 		{#if isActive}
-			<Loader2 class="h-4 w-4 animate-spin text-primary" />
-		{/if}
+	<div class="flex items-center gap-2">
+		<Sparkles class="w-4 h-4 text-amber-500" />
+		<span class="font-medium">Final Synthesis</span>
+			<Loader2 class="w-4 h-4 animate-spin text-primary" />
 	</div>
-
-	<p class="text-muted-foreground text-sm">
-		A synthesizer model combines insights from all responses into a final answer.
-	</p>
+		{/if}
 
 	{#if content || isActive}
 		<ResponseCard
@@ -44,12 +40,12 @@
 			isSynthesis={true}
 		/>
 	{:else if isComplete}
-		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center">
-			Synthesis complete but no content was generated
+		<div class="p-3 text-xs text-center border border-dashed rounded-lg text-muted-foreground">
+			Synthesis complete but no content generated
 		</div>
 	{:else}
-		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center">
-			Synthesis will begin after Stage 2 completes
+		<div class="p-3 text-xs text-center border border-dashed rounded-lg text-muted-foreground">
+			Synthesis begins after Stage 2
 		</div>
 	{/if}
 </div>

@@ -348,3 +348,17 @@ export interface MessageRanking {
 	rank: number;
 	reason: string;
 }
+
+/**
+ * AI Tool Definition
+ */
+export interface ToolDefinition {
+	name: string;
+	description: string;
+	parameters: {
+		type: 'object';
+		properties: Record<string, unknown>;
+		required?: string[];
+	};
+	execute: (params: any) => Promise<any>;
+}

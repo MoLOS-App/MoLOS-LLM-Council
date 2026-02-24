@@ -13,7 +13,8 @@
 		"./components": "./src/components/index.ts",
 		"./stores": "./src/stores/index.ts",
 		"./models": "./src/models/index.ts",
-		"./config": "./src/config.ts"
+		"./config": "./src/config.ts",
+		"./ai": "./src/server/ai/ai-tools.ts"
 	},
 	"scripts": {
 		"db:generate": "drizzle-kit generate",

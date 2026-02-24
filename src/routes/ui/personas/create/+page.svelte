@@ -128,44 +128,31 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background">
-	<!-- Header -->
-	<div class="border-b">
-		<div class="container mx-auto max-w-7xl px-4 py-3">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-4">
-					<Button variant="ghost" size="sm" onclick={handleCancel}>
-						<ArrowLeft class="mr-2 h-4 w-4" />
-						Back to Personas
-					</Button>
-				</div>
-				<div class="flex items-center gap-4">
-					<!-- Progress indicator -->
-					<div class="hidden items-center gap-2 sm:flex">
-						<div class="text-muted-foreground text-sm">
-							{completedSteps}/{formSteps.length} complete
-						</div>
-						<div class="h-2 w-24 overflow-hidden rounded-full bg-muted">
-							<div
-								class="h-full bg-primary transition-all duration-300"
-								style="width: {progressPercent}%"
-							></div>
-						</div>
-					</div>
-					<Button onclick={handleSave} disabled={!isValid || isSaving}>
-						{#if isSaving}
-							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-						{:else}
-							<Save class="mr-2 h-4 w-4" />
-						{/if}
-						Create Persona
-					</Button>
-				</div>
+<div class="flex h-full flex-col">
+	<!-- Header - Minimal -->
+	<div class="flex items-center justify-between border-b px-4 py-3">
+		<div class="flex items-center gap-2">
+			<Button variant="ghost" size="sm" onclick={handleCancel}>
+				<ArrowLeft class="h-4 w-4" />
+			</Button>
+			<h1 class="font-semibold">Create Persona</h1>
+		</div>
+		<!-- Progress indicator -->
+		<div class="flex items-center gap-2">
+			<span class="text-muted-foreground text-sm">
+				{completedSteps}/{formSteps.length}
+			</span>
+			<div class="h-2 w-20 overflow-hidden rounded-full bg-muted">
+				<div
+					class="h-full bg-primary transition-all duration-300"
+					style="width: {progressPercent}%"
+				></div>
 			</div>
 		</div>
 	</div>
 
-	<main class="container mx-auto max-w-7xl px-4 py-6">
+	<!-- Main Content - Full Width, Scrollable -->
+	<div class="flex-1 overflow-auto p-4 pb-24">
 		{#if error}
 			<div
 				class="mb-6 flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive"
@@ -514,5 +501,20 @@ When reviewing, always start with positive observations, then move to suggestion
 				<!-- Form Progress (Mobile) -->
 			</div>
 		</div>
-	</main>
+	</div>
+
+	<!-- Fixed Bottom Bar -->
+	<div class="absolute right-0 bottom-0 left-0 border-t bg-background p-4">
+		<div class="flex items-center justify-between">
+			<Button variant="outline" onclick={handleCancel}>Cancel</Button>
+			<Button onclick={handleSave} disabled={!isValid || isSaving}>
+				{#if isSaving}
+					<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+				{:else}
+					<Save class="mr-2 h-4 w-4" />
+				{/if}
+				Create Persona
+			</Button>
+		</div>
+	</div>
 </div>

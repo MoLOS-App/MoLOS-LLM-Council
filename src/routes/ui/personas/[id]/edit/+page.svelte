@@ -16,7 +16,7 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import { ArrowLeft, Save, Loader2, Crown, Sparkles } from 'lucide-svelte';
+	import { ArrowLeft, Save, Loader2, Crown, Sparkles, Trash2 } from 'lucide-svelte';
 	import type { PersonaWithProvider, AIProvider } from '../../../../../models/index.js';
 
 	interface PageData {
@@ -125,34 +125,10 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background">
-	<div class="border-b">
-		<div class="container mx-auto max-w-7xl px-4 py-3">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-4">
-					<Button variant="ghost" size="sm" onclick={handleCancel}>
-						<ArrowLeft class="mr-2 h-4 w-4" />
-						Back to Personas
-					</Button>
-				</div>
-				<div class="flex gap-2">
-					<Button variant="destructive" onclick={handleDeleteRequest} disabled={isSaving}>
-						Delete
-					</Button>
-					<Button onclick={handleSave} disabled={!isValid || isSaving}>
-						{#if isSaving}
-							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-						{:else}
-							<Save class="mr-2 h-4 w-4" />
-						{/if}
-						Save Changes
-					</Button>
-				</div>
-			</div>
-		</div>
-	</div>
+<div class="flex h-full flex-col">
 
-	<main class="container mx-auto max-w-7xl px-4 py-6">
+	<!-- Main Content - Full Width, Scrollable -->
+	<div class="flex-1 overflow-auto p-4 pb-24">
 		{#if error}
 			<div
 				class="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive"
@@ -350,7 +326,28 @@
 				</Card>
 			</div>
 		</div>
-	</main>
+	</div>
+
+	<!-- Fixed Bottom Bar -->
+	<div class="absolute right-0 bottom-0 left-0 border-t bg-background p-4">
+		<div class="flex items-center justify-between">
+			<Button variant="outline" onclick={handleCancel}>Cancel</Button>
+			<div class="flex items-center gap-2">
+				<Button variant="destructive" onclick={handleDeleteRequest} disabled={isSaving}>
+					<Trash2 class="mr-2 h-4 w-4" />
+					Delete
+				</Button>
+				<Button onclick={handleSave} disabled={!isValid || isSaving}>
+					{#if isSaving}
+						<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+					{:else}
+						<Save class="mr-2 h-4 w-4" />
+					{/if}
+					Save Changes
+				</Button>
+			</div>
+		</div>
+	</div>
 
 	<!-- Delete Confirmation Dialog -->
 	<Dialog.Root bind:open={showDeleteDialog}>

@@ -1,13 +1,14 @@
 <script lang="ts">
 	import type { PersonaWithProvider } from '../../models';
-	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	interface Props {
 		personas: PersonaWithProvider[];
 		selectedIds: string[];
 		presidentId: string | null;
 		editable?: boolean;
+		compact?: boolean;
 		onSelect: (personaId: string) => void;
 		onRemove: (personaId: string) => void;
 	}
@@ -17,6 +18,7 @@
 		selectedIds = [],
 		presidentId = null,
 		editable = true,
+		compact = false,
 		onSelect,
 		onRemove
 	}: Props = $props();
@@ -34,94 +36,169 @@
 		const totalSelected = selectedIds.length;
 
 		if (count > 0) {
-			// Already selected - remove one instance
 			onRemove(personaId);
 		} else if (totalSelected < MAX_TOTAL_MEMBERS) {
-			// Not selected - add it
 			onSelect(personaId);
 		}
 	}
+
+	function getTooltipContent(persona: PersonaWithProvider): string {
+		const parts: string[] = [];
+		if (persona.description) {
+			parts.push(persona.description);
+		}
+		if (persona.personalityPrompt) {
+			const promptPreview = persona.personalityPrompt.slice(0, 150);
+			parts.push(`\n"${promptPreview}${persona.personalityPrompt.length > 150 ? '...' : ''}"`);
+		}
+		return parts.join('\n') || 'No description available';
+	}
 </script>
 
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-	{#each personas as persona}
-		{@const count = getSelectionCount(persona.id)}
-		{@const isSelected = count > 0}
-		{@const totalSelected = selectedIds.length}
-		{@const canSelect = !isSelected && totalSelected < MAX_TOTAL_MEMBERS}
+{#if compact}
+	<!-- Compact horizontal mode - 2 rows max, horizontally scrollable -->
+	<div class="flex flex-wrap gap-2">
+		{#each personas as persona}
+			{@const count = getSelectionCount(persona.id)}
+			{@const isSelected = count > 0}
+			{@const totalSelected = selectedIds.length}
+			{@const canSelect = !isSelected && totalSelected < MAX_TOTAL_MEMBERS}
 
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<Card
-			class="group relative overflow-hidden transition-all hover:shadow-md {isSelected
-				? 'border-primary bg-primary/5 ring-2 ring-primary/30'
-				: canSelect && editable
-					? 'cursor-pointer border-border hover:border-primary/50'
-					: 'border-border opacity-60'}"
-			onclick={() => handleCardClick(persona.id)}
-		>
-			<CardContent class="p-5">
-				<div class="flex gap-3">
-					<div
-						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl"
-					>
-						{persona.avatar}
-					</div>
+			<Tooltip.Provider>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<button
+							class="relative flex items-center gap-2 rounded-lg border-2 px-3 py-2 transition-all {isSelected
+								? 'border-primary bg-primary/10 font-bold'
+								: canSelect && editable
+									? 'border-border hover:border-primary/50 hover:bg-muted/50'
+									: 'border-border opacity-50'}"
+							onclick={() => handleCardClick(persona.id)}
+							disabled={!editable}
+						>
+							<span class="text-xl">{persona.avatar}</span>
+							<span class="text-sm">{persona.name}</span>
+							{#if persona.id === presidentId}
+								<span class="text-xs">👑</span>
+							{/if}
+						</button>
+					</Tooltip.Trigger>
+					<Tooltip.Portal>
+						<Tooltip.Content
+							class="z-50 max-w-xs px-3 py-2 text-sm border rounded-lg shadow-lg text-foreground bg-popover"
+							sideOffset={5}
+						>
+							{#if persona.description}
+								<p class="mt-1 ">{persona.description}</p>
+							{/if}
+							{#if persona.personalityPrompt}
+								<p class="mt-1 italic line-clamp-3">
+									"{persona.personalityPrompt.slice(0, 120)}{persona.personalityPrompt.length > 120
+										? '...'
+										: ''}"
+								</p>
+							{/if}
+							<Tooltip.Arrow />
+						</Tooltip.Content>
+					</Tooltip.Portal>
+				</Tooltip.Root>
+			</Tooltip.Provider>
+		{/each}
+	</div>
 
-					<div class="flex min-w-0 flex-1 flex-col">
-						<div class="mb-2 flex items-start justify-between gap-2">
-							<div class="flex min-w-0 items-center gap-2">
-								<h3 class="truncate text-sm font-semibold">{persona.name}</h3>
-								{#if persona.id === presidentId}
-									<Badge variant="secondary" class="shrink-0 text-xs whitespace-nowrap">
-										👑 Chairman
-									</Badge>
+	{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
+		<p class="mt-2 text-xs text-muted-foreground">
+			Maximum {MAX_TOTAL_MEMBERS} members. Click to remove.
+		</p>
+	{/if}
+{:else}
+	<!-- Full grid mode -->
+	<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+		{#each personas as persona}
+			{@const count = getSelectionCount(persona.id)}
+			{@const isSelected = count > 0}
+			{@const totalSelected = selectedIds.length}
+			{@const canSelect = !isSelected && totalSelected < MAX_TOTAL_MEMBERS}
+
+			<Tooltip.Provider>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="group relative overflow-hidden rounded-lg border-2 transition-all {isSelected
+								? 'border-primary bg-primary/5'
+								: canSelect && editable
+									? 'cursor-pointer border-border hover:border-primary/50 hover:bg-muted/30'
+									: 'border-border opacity-50'}"
+							onclick={() => handleCardClick(persona.id)}
+							role="button"
+							tabindex={editable ? 0 : -1}
+						>
+							<div class="flex items-center gap-3 p-3">
+								<div
+									class="flex items-center justify-center w-10 h-10 text-xl rounded-lg shrink-0 bg-muted"
+								>
+									{persona.avatar}
+								</div>
+
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-2">
+										<span class="text-sm font-medium truncate">{persona.name}</span>
+										{#if persona.id === presidentId}
+											<span class="text-xs">👑</span>
+										{/if}
+									</div>
+									<p class="text-xs truncate text-muted-foreground">
+										{persona.provider.model}
+									</p>
+								</div>
+
+								{#if isSelected}
+									<div
+										class="flex items-center justify-center w-5 h-5 rounded-full shrink-0 bg-primary"
+									>
+										<span class="w-2 h-2 rounded-full bg-primary-foreground"></span>
+									</div>
+								{:else if editable && canSelect}
+									<div
+										class="flex items-center justify-center w-5 h-5 text-sm border-2 border-dashed rounded-full text-muted-foreground/50 border-muted-foreground/30 shrink-0"
+									>
+										+
+									</div>
 								{/if}
 							</div>
-
-							{#if isSelected}
-								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
-								>
-									{count}
-								</div>
-							{:else if editable && canSelect}
-								<div
-									class="border-muted-foreground/30 text-muted-foreground/50 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed text-lg"
-								>
-									+
-								</div>
+						</div>
+					</Tooltip.Trigger>
+					<Tooltip.Portal>
+						<Tooltip.Content
+							class="z-50 max-w-xs px-3 py-2 text-sm border rounded-lg shadow-lg bg-popover"
+							sideOffset={5}
+						>
+							<p class="font-medium">{persona.name}</p>
+							{#if persona.description}
+								<p class="mt-1 text-xs text-muted-foreground">{persona.description}</p>
 							{/if}
-						</div>
+							{#if persona.personalityPrompt}
+								<p class="mt-1 text-xs italic text-muted-foreground line-clamp-3">
+									"{persona.personalityPrompt.slice(0, 120)}{persona.personalityPrompt.length > 120
+										? '...'
+										: ''}"
+								</p>
+							{/if}
+							<Tooltip.Arrow />
+						</Tooltip.Content>
+					</Tooltip.Portal>
+				</Tooltip.Root>
+			</Tooltip.Provider>
+		{/each}
+	</div>
 
-						<p class="text-muted-foreground mb-3 line-clamp-2 text-xs">
-							{persona.description}
-						</p>
-
-						<div class="mb-2 text-xs">
-							<span class="font-medium">{persona.provider.name}</span>
-							<span class="text-muted-foreground/70"> - </span>
-							<span class="text-muted-foreground/70 font-mono">{persona.provider.model}</span>
-						</div>
-
-						{#if isSelected}
-							<Badge variant="default" class="w-fit shrink-0">
-								{#if count > 1}
-									{count}x selected
-								{:else}
-									Selected
-								{/if}
-							</Badge>
-						{/if}
-					</div>
-				</div>
-			</CardContent>
-		</Card>
-	{/each}
-</div>
-
-{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
-	<p class="text-muted-foreground mt-4 text-center text-sm">
-		Maximum {MAX_TOTAL_MEMBERS} council members reached. Click a selected member to remove.
-	</p>
+	{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
+		<p class="mt-3 text-sm text-center text-muted-foreground">
+			Maximum {MAX_TOTAL_MEMBERS} council members. Click to remove.
+		</p>
+	{/if}
 {/if}
