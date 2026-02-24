@@ -264,12 +264,4 @@
 			</TabsContent>
 		</Tabs>
 	{/if}
-
-	<!-- Settings Link -->
-	<div class="mt-8 flex justify-center">
-		<Button variant="ghost" onclick={() => goto('/ui/MoLOS-LLM-Council/settings')}>
-			<Settings class="mr-2 h-4 w-4" />
-			Council Settings
-		</Button>
-	</div>
 </div>

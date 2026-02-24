@@ -15,21 +15,9 @@
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import {
-		Loader2,
-		Save,
-		Key,
-		Plus,
-		Trash2,
-		Edit,
-		CheckCircle,
-		ArrowLeft,
-		X
-	} from 'lucide-svelte';
-	import {
-		loadSettings,
-		updateSettings
-	} from '../../../stores/council.store.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { Loader2, Save, Key, Plus, Trash2, Edit, CheckCircle, ArrowLeft, X } from 'lucide-svelte';
+	import { loadSettings, updateSettings } from '../../../stores/council.store.js';
 	import type { AIProvider, ProviderType } from '../../../models/index.js';
 
 	const PROVIDER_TYPES = [
@@ -46,6 +34,8 @@
 	let isSavingProvider = $state(false);
 	let isDeleting = $state('');
 	let openAccordionItems = $state<string[]>([]);
+	let showDeleteDialog = $state(false);
+	let pendingDeleteId = $state<string | null>(null);
 
 	let editingProvider = $state<AIProvider | null>(null);
 	let showCreateForm = $state(false);
@@ -211,28 +201,35 @@
 	}
 
 	async function handleDeleteProvider(id: string) {
-		if (!confirm('Are you sure you want to delete this provider?')) return;
+		pendingDeleteId = id;
+		showDeleteDialog = true;
+	}
 
-		isDeleting = id;
+	async function confirmDeleteProvider() {
+		if (!pendingDeleteId) return;
+
+		isDeleting = pendingDeleteId;
 		try {
-			const response = await fetch(`/api/MoLOS-LLM-Council/providers/${id}`, {
+			const response = await fetch(`/api/MoLOS-LLM-Council/providers/${pendingDeleteId}`, {
 				method: 'DELETE'
 			});
 
 			if (response.ok) {
 				await loadProvidersData();
-				openAccordionItems = openAccordionItems.filter((item) => item !== id);
+				openAccordionItems = openAccordionItems.filter((item) => item !== pendingDeleteId);
 			}
 		} catch (err) {
 			console.error('Failed to delete provider:', err);
 		} finally {
 			isDeleting = '';
+			showDeleteDialog = false;
+			pendingDeleteId = null;
 		}
 	}
 
 	function handleProviderTypeChange(type: ProviderType) {
 		newProvider.type = type;
-		
+
 		switch (type) {
 			case 'openrouter':
 				newProvider.apiUrl = 'https://openrouter.ai/api/v1';
@@ -261,20 +258,8 @@
 </script>
 
 <div class="min-h-screen bg-background">
-	<div class="border-b">
-		<div class="container-fluid px-4 py-3">
-			<div class="flex items-center justify-between">
-				<h1 class="text-xl font-bold">Council Settings</h1>
-				<Button variant="ghost" size="sm" onclick={() => goto('/ui/MoLOS-LLM-Council')}>
-					<ArrowLeft class="mr-2 h-4 w-4" />
-					Back to Council
-				</Button>
-			</div>
-		</div>
-	</div>
-
 	<main class="container-fluid px-4 py-6">
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Left Column: Providers -->
 			<div class="space-y-6">
 				<Card>
@@ -302,7 +287,8 @@
 							</Button>
 						</div>
 						<CardDescription>
-							Configure AI providers for your council. Personas will use these providers to generate responses.
+							Configure AI providers for your council. Personas will use these providers to generate
+							responses.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -330,7 +316,7 @@
 														handleProviderTypeChange(
 															(e.target as HTMLSelectElement).value as ProviderType
 														)}
-													class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+													class="border-input w-full rounded-md border bg-background px-3 py-2 text-sm"
 												>
 													{#each PROVIDER_TYPES as type}
 														<option value={type.value}>{type.label}</option>
@@ -396,12 +382,10 @@
 												</Button>
 												<Button
 													onclick={handleCreateProvider}
-													disabled={
-														isSavingProvider ||
+													disabled={isSavingProvider ||
 														!newProvider.name.trim() ||
 														!newProvider.apiUrl.trim() ||
-														!newProvider.model.trim()
-													}
+														!newProvider.model.trim()}
 												>
 													{#if isSavingProvider}
 														<Loader2 class="mr-2 h-4 w-4 animate-spin" />
@@ -415,7 +399,7 @@
 							{/if}
 
 							{#if providers.length === 0}
-								<div class="text-center py-8 text-muted-foreground">
+								<div class="text-muted-foreground py-8 text-center">
 									<Key class="mx-auto mb-2 h-12 w-12 opacity-50" />
 									<p>No providers configured yet.</p>
 									<p class="text-sm">Add a provider to start using council.</p>
@@ -428,7 +412,9 @@
 									<Accordion.Item value={provider.id} class="rounded-xl border">
 										<Accordion.Trigger class="px-4">
 											<div class="flex items-center gap-3">
-												<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+												<div
+													class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10"
+												>
 													<Key class="h-4 w-4 text-primary" />
 												</div>
 												<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
@@ -440,7 +426,7 @@
 															<Badge variant="default" class="text-xs">Default</Badge>
 														{/if}
 													</div>
-													<span class="text-xs text-muted-foreground">
+													<span class="text-muted-foreground text-xs">
 														{getProviderLabel(provider.type)} · {provider.model}
 													</span>
 												</div>
@@ -459,7 +445,7 @@
 																	handleProviderTypeChange(
 																		(e.target as HTMLSelectElement).value as ProviderType
 																	)}
-																class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+																class="border-input w-full rounded-md border bg-background px-3 py-2 text-sm"
 															>
 																{#each PROVIDER_TYPES as type}
 																	<option value={type.value}>{type.label}</option>
@@ -498,12 +484,10 @@
 															</Button>
 															<Button
 																onclick={handleUpdateProvider}
-																disabled={
-																	isSavingProvider ||
+																disabled={isSavingProvider ||
 																	!newProvider.name.trim() ||
 																	!newProvider.apiUrl.trim() ||
-																	!newProvider.model.trim()
-																}
+																	!newProvider.model.trim()}
 															>
 																{#if isSavingProvider}
 																	<Loader2 class="mr-2 h-4 w-4 animate-spin" />
@@ -518,15 +502,13 @@
 													<div class="space-y-3">
 														<div class="grid grid-cols-2 gap-3">
 															<div>
-																<Label class="text-xs text-muted-foreground">
-																	Provider Type
-																</Label>
+																<Label class="text-muted-foreground text-xs">Provider Type</Label>
 																<div class="mt-1 font-medium">
 																	{getProviderLabel(provider.type)}
 																</div>
 															</div>
 															<div>
-																<Label class="text-xs text-muted-foreground">Model</Label>
+																<Label class="text-muted-foreground text-xs">Model</Label>
 																<div class="mt-1 font-mono text-sm">
 																	{provider.model}
 																</div>
@@ -534,7 +516,7 @@
 														</div>
 
 														<div>
-															<Label class="text-xs text-muted-foreground">API URL</Label>
+															<Label class="text-muted-foreground text-xs">API URL</Label>
 															<div class="mt-1 font-mono text-sm">
 																{provider.apiUrl}
 															</div>
@@ -599,9 +581,7 @@
 						<div class="flex items-center justify-between py-2">
 							<div class="flex-1">
 								<Label for="streaming">Enable Streaming</Label>
-								<p class="text-sm text-muted-foreground">
-									Show responses as they are generated
-								</p>
+								<p class="text-muted-foreground text-sm">Show responses as they are generated</p>
 							</div>
 							<Switch
 								id="streaming"
@@ -655,7 +635,7 @@
 		</div>
 
 		<!-- Save Settings Button -->
-		<div class="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+		<div class="fixed right-0 bottom-0 left-0 z-0 bg-background p-4">
 			<div class="container-fluid flex justify-end">
 				<Button onclick={handleSaveSettings} disabled={isSaving} size="lg">
 					{#if isSaving}
@@ -668,6 +648,22 @@
 			</div>
 		</div>
 	</main>
+
+	<!-- Delete Confirmation Dialog -->
+	<Dialog.Root bind:open={showDeleteDialog}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete Provider?</Dialog.Title>
+				<Dialog.Description>
+					Are you sure you want to delete this provider? This action cannot be undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>Cancel</Button>
+				<Button variant="destructive" onclick={confirmDeleteProvider}>Delete</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 </div>
 
 <style>

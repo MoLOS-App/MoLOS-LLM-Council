@@ -3,7 +3,13 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
+	import {
+		Card,
+		CardContent,
+		CardHeader,
+		CardTitle,
+		CardDescription
+	} from '$lib/components/ui/card';
 	import { Plus, Edit, Trash2, Lock, ArrowLeft, Key, Loader2 } from 'lucide-svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Dialog from '$lib/components/ui/dialog';
@@ -112,17 +118,10 @@
 </script>
 
 <div class="container mx-auto max-w-6xl p-4 md:p-6">
-	<div class="mb-6">
-		<Button variant="ghost" size="sm" onclick={() => goto('/ui/MoLOS-LLM-Council')}>
-			<ArrowLeft class="mr-2 h-4 w-4" />
-			Back to Council
-		</Button>
-	</div>
-
 	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold">Personas</h1>
-			<p class="text-sm text-muted-foreground">Manage your AI personas for the LLM Council</p>
+			<p class="text-muted-foreground text-sm">Manage your AI personas for the LLM Council</p>
 		</div>
 		<Button onclick={handleCreate}>
 			<Plus class="mr-2 h-4 w-4" />
@@ -134,7 +133,7 @@
 		<Card class="mb-6 bg-muted/30">
 			<CardHeader>
 				<CardTitle class="flex items-center gap-2">
-					<Lock class="h-5 w-5 text-muted-foreground" />
+					<Lock class="text-muted-foreground h-5 w-5" />
 					System Personas
 				</CardTitle>
 				<CardDescription>Built-in personas that cannot be modified</CardDescription>
@@ -145,7 +144,9 @@
 						<Card class="border-primary/20 bg-muted/50">
 							<CardContent class="p-4">
 								<div class="flex gap-3">
-									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-background text-2xl">
+									<div
+										class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-background text-2xl"
+									>
 										{persona.avatar}
 									</div>
 									<div class="flex min-w-0 flex-1 flex-col">
@@ -155,14 +156,16 @@
 												<Badge variant="secondary" class="text-xs">👑 Chairman</Badge>
 											{/if}
 										</div>
-										<p class="line-clamp-2 text-xs text-muted-foreground">
+										<p class="text-muted-foreground line-clamp-2 text-xs">
 											{persona.description}
 										</p>
 										<div class="mt-2 text-xs">
 											{#if persona.provider}
 												<span class="font-medium">{persona.provider.name}</span>
 												<span class="text-muted-foreground/70"> - </span>
-												<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+												<span class="text-muted-foreground/70 font-mono"
+													>{persona.provider.model}</span
+												>
 											{:else}
 												<span class="text-destructive">No provider configured</span>
 											{/if}
@@ -198,13 +201,15 @@
 				</CardHeader>
 				<CardContent class="space-y-4">
 					{#if providers.length === 0}
-						<p class="text-sm text-muted-foreground">No providers available. Create a provider first.</p>
+						<p class="text-muted-foreground text-sm">
+							No providers available. Create a provider first.
+						</p>
 					{:else}
 						<div class="space-y-2">
 							<label for="provider-select" class="text-sm font-medium">Provider</label>
 							<select
 								id="provider-select"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+								class="border-input w-full rounded-md border bg-background px-3 py-2 text-sm"
 								bind:value={selectedProviderId}
 							>
 								{#each providers as provider}
@@ -243,10 +248,10 @@
 			{#if userPersonas.length === 0}
 				<div class="flex flex-col items-center justify-center p-12 text-center">
 					<div class="mb-4 rounded-full bg-muted p-4">
-						<Plus class="h-8 w-8 text-muted-foreground" />
+						<Plus class="text-muted-foreground h-8 w-8" />
 					</div>
 					<h3 class="mb-2 text-lg font-semibold">No custom personas yet</h3>
-					<p class="mb-4 text-sm text-muted-foreground">
+					<p class="text-muted-foreground mb-4 text-sm">
 						Create your first persona to customize the LLM Council experience
 					</p>
 					<Button variant="outline" onclick={handleCreate}>
@@ -257,10 +262,12 @@
 			{:else}
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each userPersonas as persona}
-						<Card class="group transition-all hover:shadow-md hover:border-primary/50">
+						<Card class="group transition-all hover:border-primary/50 hover:shadow-md">
 							<CardContent class="p-4">
 								<div class="flex gap-3">
-									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+									<div
+										class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl"
+									>
 										{persona.avatar}
 									</div>
 									<div class="flex min-w-0 flex-1 flex-col">
@@ -272,7 +279,7 @@
 														<Badge variant="secondary" class="text-xs">👑 Chairman</Badge>
 													{/if}
 												</div>
-												<p class="line-clamp-2 text-xs text-muted-foreground">
+												<p class="text-muted-foreground line-clamp-2 text-xs">
 													{persona.description}
 												</p>
 											</div>
@@ -281,7 +288,9 @@
 											<div class="mb-2 text-xs">
 												<span class="font-medium">{persona.provider.name}</span>
 												<span class="text-muted-foreground/70"> - </span>
-												<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+												<span class="text-muted-foreground/70 font-mono"
+													>{persona.provider.model}</span
+												>
 											</div>
 											<div class="flex gap-2">
 												<Button
@@ -323,12 +332,8 @@
 				</Dialog.Description>
 			</Dialog.Header>
 			<Dialog.Footer>
-				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>
-					Cancel
-				</Button>
-				<Button variant="destructive" onclick={confirmDelete}>
-					Delete
-				</Button>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>Cancel</Button>
+				<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
 			</Dialog.Footer>
 		</Dialog.Content>
 	</Dialog.Root>

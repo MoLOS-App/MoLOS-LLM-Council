@@ -111,7 +111,7 @@
 				currentConversationId={$currentConversationStore?.id}
 				onSelect={handleSelect}
 				onNew={handleNew}
-				onDelete={handleDelete}
+				onDelete={handleDeleteRequest}
 			/>
 		</aside>
 	{/if}
@@ -182,4 +182,20 @@
 			</div>
 		{/if}
 	</main>
+
+	<!-- Delete Confirmation Dialog -->
+	<Dialog.Root bind:open={showDeleteDialog}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete Conversation?</Dialog.Title>
+				<Dialog.Description>
+					Are you sure you want to delete this conversation? This action cannot be undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>Cancel</Button>
+				<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 </div>

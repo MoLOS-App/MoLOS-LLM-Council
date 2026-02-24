@@ -5,7 +5,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
+	import {
+		Card,
+		CardContent,
+		CardHeader,
+		CardTitle,
+		CardDescription
+	} from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Badge } from '$lib/components/ui/badge';
@@ -32,7 +38,23 @@
 	let error = $state('');
 	let showDeleteDialog = $state(false);
 
-	const AVATARS = ['🎭', '👨‍💻', '👩‍💻', '🧙', '🧛', '🎨', '🎼', '🎪', '🧑‍🎓', '👴', '🦄', '🚀', '💡', '🎯', '🔬'];
+	const AVATARS = [
+		'🎭',
+		'👨‍💻',
+		'👩‍💻',
+		'🧙',
+		'🧛',
+		'🎨',
+		'🎼',
+		'🎪',
+		'🧑‍🎓',
+		'👴',
+		'🦄',
+		'🚀',
+		'💡',
+		'🎯',
+		'🔬'
+	];
 
 	const isValid = $derived(
 		name.trim().length > 0 &&
@@ -112,10 +134,6 @@
 						<ArrowLeft class="mr-2 h-4 w-4" />
 						Back to Personas
 					</Button>
-					<div>
-						<h1 class="text-lg font-bold">Edit Persona</h1>
-						<p class="text-sm text-muted-foreground">Configure your AI council member</p>
-					</div>
 				</div>
 				<div class="flex gap-2">
 					<Button variant="destructive" onclick={handleDeleteRequest} disabled={isSaving}>
@@ -136,7 +154,9 @@
 
 	<main class="container mx-auto max-w-7xl px-4 py-6">
 		{#if error}
-			<div class="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+			<div
+				class="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive"
+			>
 				<p class="font-medium">{error}</p>
 			</div>
 		{/if}
@@ -155,14 +175,15 @@
 					</CardHeader>
 					<CardContent>
 						<div class="mb-4 flex justify-center">
-							<div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-muted text-2xl ">
+							<div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-muted text-2xl">
 								{avatar}
 							</div>
 						</div>
-						<div class="flex flex-wrap justify-center flex-row gap-2">
+						<div class="flex flex-row flex-wrap justify-center gap-2">
 							{#each AVATARS as emoji}
 								<button
-									class="aspect-square rounded-lg w-12 h-12 text-center border-2 border-border bg-background text-2xl transition-all hover:border-primary hover:bg-primary/10 {avatar === emoji
+									class="aspect-square h-12 w-12 rounded-lg border-2 border-border bg-background text-center text-2xl transition-all hover:border-primary hover:bg-primary/10 {avatar ===
+									emoji
 										? 'border-primary bg-primary/10 ring-2 ring-primary'
 										: ''}"
 									onclick={() => (avatar = emoji)}
@@ -183,10 +204,8 @@
 					<CardContent class="space-y-4">
 						<div class="flex items-center justify-between space-y-0">
 							<div class="flex-1">
-								<Label for="isPresident" class="text-sm font-medium">
-									Can be Council Chairman
-								</Label>
-								<p class="text-xs text-muted-foreground">
+								<Label for="isPresident" class="text-sm font-medium">Can be Council Chairman</Label>
+								<p class="text-muted-foreground text-xs">
 									Allow this persona to lead council discussions
 								</p>
 							</div>
@@ -195,12 +214,8 @@
 
 						<div class="flex items-center justify-between space-y-0">
 							<div class="flex-1">
-								<Label for="isDefault" class="text-sm font-medium">
-									Set as Default
-								</Label>
-								<p class="text-xs text-muted-foreground">
-									Include this persona by default
-								</p>
+								<Label for="isDefault" class="text-sm font-medium">Set as Default</Label>
+								<p class="text-muted-foreground text-xs">Include this persona by default</p>
 							</div>
 							<Switch id="isDefault" bind:checked={isDefault} />
 						</div>
@@ -208,7 +223,7 @@
 						{#if isPresident}
 							<div class="flex items-start gap-2 rounded-lg bg-primary/5 p-3">
 								<Crown class="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-								<p class="text-xs text-muted-foreground">
+								<p class="text-muted-foreground text-xs">
 									This persona can be selected as the Council Chairman for synthesis.
 								</p>
 							</div>
@@ -231,7 +246,7 @@
 							<Label for="provider" class="text-sm font-medium">Provider *</Label>
 							<select
 								id="provider"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+								class="border-input w-full rounded-md border bg-background px-3 py-2 text-sm"
 								bind:value={providerId}
 							>
 								{#each data.providers as provider}
@@ -244,12 +259,9 @@
 						{#if providerId}
 							<div class="mt-3 rounded-lg bg-muted p-3">
 								<p class="text-xs font-medium">
-									{
-										data.providers.find((p) => p.id === providerId)?.name ||
-											'Unknown Provider'
-									}
+									{data.providers.find((p) => p.id === providerId)?.name || 'Unknown Provider'}
 								</p>
-								<p class="mt-1 text-xs text-muted-foreground font-mono">
+								<p class="text-muted-foreground mt-1 font-mono text-xs">
 									{data.providers.find((p) => p.id === providerId)?.model || ''}
 								</p>
 							</div>
@@ -270,9 +282,7 @@
 						<div class="space-y-2">
 							<Label for="name" class="text-sm font-medium">Name *</Label>
 							<Input id="name" bind:value={name} placeholder="e.g., Creative Writer" />
-							<p class="text-xs text-muted-foreground">
-								A short, memorable name for this persona
-							</p>
+							<p class="text-muted-foreground text-xs">A short, memorable name for this persona</p>
 						</div>
 
 						<div class="space-y-2">
@@ -282,7 +292,7 @@
 								bind:value={description}
 								placeholder="Brief description of this persona's role"
 							/>
-							<p class="text-xs text-muted-foreground">
+							<p class="text-muted-foreground text-xs">
 								Optional description shown in the persona card
 							</p>
 						</div>
@@ -316,7 +326,7 @@
 
 						<div class="rounded-lg bg-muted p-4">
 							<p class="mb-2 text-sm font-semibold">Tips for a good persona:</p>
-							<ul class="list-inside list-disc space-y-1 text-xs text-muted-foreground">
+							<ul class="text-muted-foreground list-inside list-disc space-y-1 text-xs">
 								<li>Define specific expertise areas and knowledge base</li>
 								<li>Describe the tone and communication style</li>
 								<li>Include specific perspectives or biases</li>
@@ -325,11 +335,13 @@
 							</ul>
 						</div>
 
-						<div class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+						<div
+							class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3"
+						>
 							<div class="text-2xl">{avatar}</div>
 							<div class="flex-1">
 								<p class="text-sm font-medium">{name || 'Persona Name'}</p>
-								<p class="text-xs text-muted-foreground">
+								<p class="text-muted-foreground text-xs">
 									{personalityPrompt.slice(0, 100) || 'No personality defined yet...'}...
 								</p>
 							</div>
@@ -350,12 +362,8 @@
 				</Dialog.Description>
 			</Dialog.Header>
 			<Dialog.Footer>
-				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>
-					Cancel
-				</Button>
-				<Button variant="destructive" onclick={confirmDelete}>
-					Delete
-				</Button>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>Cancel</Button>
+				<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
 			</Dialog.Footer>
 		</Dialog.Content>
 	</Dialog.Root>
