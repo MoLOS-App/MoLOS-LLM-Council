@@ -36,7 +36,6 @@
 	let activeTab = $state('stage1');
 
 	onMount(async () => {
-		const settings = await loadSettings();
 		const personasResponse = await fetch('/api/MoLOS-LLM-Council/personas');
 		if (personasResponse.ok) {
 			const data = await personasResponse.json();
