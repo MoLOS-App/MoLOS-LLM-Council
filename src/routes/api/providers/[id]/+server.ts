@@ -34,25 +34,33 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const body = await request.json();
-	const result = UpdateProviderSchema.safeParse(body);
+	try {
+		const body = await request.json();
+		const result = UpdateProviderSchema.safeParse(body);
 
-	if (!result.success) {
-		throw error(400, result.error.issues[0].message);
+		if (!result.success) {
+			throw error(400, result.error.issues[0].message);
+		}
+
+		const providerRepo = new ProviderRepository();
+		const provider = await providerRepo.update(params.id, userId, result.data);
+
+		if (!provider) {
+			throw error(404, 'Provider not found');
+		}
+
+		if (result.data.isDefault) {
+			await providerRepo.setDefault(params.id, userId);
+		}
+
+		return json({ provider });
+	} catch (err) {
+		console.error('[API Error] Failed to update provider:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to update provider');
 	}
-
-	const providerRepo = new ProviderRepository();
-	const provider = await providerRepo.update(params.id, userId, result.data);
-
-	if (!provider) {
-		throw error(404, 'Provider not found');
-	}
-
-	if (result.data.isDefault) {
-		await providerRepo.setDefault(params.id, userId);
-	}
-
-	return json({ provider });
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
@@ -61,16 +69,24 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const providerRepo = new ProviderRepository();
-	const provider = await providerRepo.getById(params.id, userId);
+	try {
+		const providerRepo = new ProviderRepository();
+		const provider = await providerRepo.getById(params.id, userId);
 
-	if (!provider) {
-		throw error(404, 'Provider not found');
+		if (!provider) {
+			throw error(404, 'Provider not found');
+		}
+
+		await providerRepo.delete(params.id);
+
+		return json({ success: true });
+	} catch (err) {
+		console.error('[API Error] Failed to delete provider:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to delete provider');
 	}
-
-	await providerRepo.delete(params.id);
-
-	return json({ success: true });
 };
 
 export const POST: RequestHandler = async ({ locals, params }) => {
@@ -79,14 +95,22 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const providerRepo = new ProviderRepository();
-	const provider = await providerRepo.getById(params.id, userId);
+	try {
+		const providerRepo = new ProviderRepository();
+		const provider = await providerRepo.getById(params.id, userId);
 
-	if (!provider) {
-		throw error(404, 'Provider not found');
+		if (!provider) {
+			throw error(404, 'Provider not found');
+		}
+
+		await providerRepo.setDefault(params.id, userId);
+
+		return json({ success: true });
+	} catch (err) {
+		console.error('[API Error] Failed to set default provider:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to set default provider');
 	}
-
-	await providerRepo.setDefault(params.id, userId);
-
-	return json({ success: true });
 };

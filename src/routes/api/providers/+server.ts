@@ -19,10 +19,18 @@ export const GET: RequestHandler = async ({ locals }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const providerRepo = new ProviderRepository();
-	const providers = await providerRepo.getByUserId(userId);
+	try {
+		const providerRepo = new ProviderRepository();
+		const providers = await providerRepo.getByUserId(userId);
 
-	return json({ providers });
+		return json({ providers });
+	} catch (err) {
+		console.error('[API Error] Failed to fetch providers:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to fetch providers');
+	}
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -31,23 +39,31 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const body = await request.json();
-	const result = CreateProviderSchema.safeParse(body);
+	try {
+		const body = await request.json();
+		const result = CreateProviderSchema.safeParse(body);
 
-	if (!result.success) {
-		throw error(400, result.error.issues[0].message);
+		if (!result.success) {
+			throw error(400, result.error.issues[0].message);
+		}
+
+		const providerRepo = new ProviderRepository();
+		const provider = await providerRepo.create({
+			userId,
+			...result.data,
+			isDefault: result.data.isDefault || false
+		});
+
+		if (result.data.isDefault) {
+			await providerRepo.setDefault(provider.id, userId);
+		}
+
+		return json({ provider }, { status: 201 });
+	} catch (err) {
+		console.error('[API Error] Failed to create provider:', err);
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to create provider');
 	}
-
-	const providerRepo = new ProviderRepository();
-	const provider = await providerRepo.create({
-		userId,
-		...result.data,
-		isDefault: result.data.isDefault || false
-	});
-
-	if (result.data.isDefault) {
-		await providerRepo.setDefault(provider.id, userId);
-	}
-
-	return json({ provider }, { status: 201 });
 };

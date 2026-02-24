@@ -25,24 +25,39 @@ export class OpenRouterClient extends BaseProviderClient {
 			throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
 		}
 
-		for await (const chunk of this.parseStream(response)) {
-			const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+		try {
+			for await (const chunk of this.parseStream(response)) {
+				const lines = chunk.split('\n').filter((line) => line.trim() !== '');
 
-			for (const line of lines) {
-				if (line.startsWith('data: ')) {
-					const data = line.slice(6);
-					if (data === '[DONE]') continue;
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						const data = line.slice(6);
+						if (data === '[DONE]') continue;
 
-					try {
-						const parsed = JSON.parse(data);
-						const content = parsed.choices?.[0]?.delta?.content;
-						if (content) {
-							onChunk(content);
+						try {
+							const parsed = JSON.parse(data);
+							// Validate structure before accessing
+							if (parsed && Array.isArray(parsed.choices) && parsed.choices.length > 0) {
+								const content = parsed.choices[0]?.delta?.content;
+								if (content) {
+									onChunk(content);
+								}
+							}
+						} catch (e) {
+							// Log with more context for debugging
+							console.warn('[OpenRouterClient] Failed to parse SSE data:', {
+								data: data.substring(0, 100),
+								error: e instanceof Error ? e.message : String(e)
+							});
 						}
-					} catch (e) {
-						console.warn('Failed to parse SSE data:', data);
 					}
 				}
+			}
+		} catch (e) {
+			// Catch and re-throw with context if it's not a parsing error
+			if (e instanceof Error && !e.message.includes('Failed to parse SSE')) {
+				console.error('[OpenRouterClient] Streaming error:', e);
+				throw new Error(`OpenRouter streaming failed: ${e.message}`);
 			}
 		}
 	}

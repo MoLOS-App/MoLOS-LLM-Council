@@ -27,7 +27,8 @@ export const MessageRole = {
 export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole];
 
 /**
- * Conversation Model
+ * Conversation Model (Legacy - use CouncilConversation instead)
+ * @deprecated Use CouncilConversation instead - persona-based architecture
  */
 export interface Conversation {
 	id: string;
@@ -49,7 +50,8 @@ export type UpdateConversationInput = Partial<
 >;
 
 /**
- * Message Ranking Structure
+ * Message Ranking Structure (Legacy - use MessageRanking instead)
+ * @deprecated Use MessageRanking instead - persona-based architecture
  */
 export interface ModelRanking {
 	modelId: string;
@@ -59,7 +61,8 @@ export interface ModelRanking {
 }
 
 /**
- * Message Model
+ * Message Model (Legacy - use CouncilMessage instead)
+ * @deprecated Use CouncilMessage instead - persona-based architecture
  */
 export interface Message {
 	id: string;
@@ -91,7 +94,7 @@ export interface CouncilSettings {
 	hasApiKey?: boolean;
 	createdAt: number;
 	updatedAt: number;
-} 
+}
 
 export type UpdateSettingsInput = Partial<
 	Omit<CouncilSettings, 'userId' | 'createdAt' | 'updatedAt'>
@@ -206,6 +209,8 @@ export const ProviderType = {
 	OPENROUTER: 'openrouter',
 	OPENAI: 'openai',
 	ANTHROPIC: 'anthropic',
+	ZAI: 'zai',
+	ZAI_CODING: 'zai_coding',
 	CUSTOM: 'custom'
 } as const;
 
@@ -255,7 +260,7 @@ export interface CouncilPersona {
  * Persona with Provider (join result)
  */
 export interface PersonaWithProvider extends CouncilPersona {
-	provider: Pick<AIProvider, 'id' | 'name' | 'type' | 'model'>;
+	provider: Pick<AIProvider, 'id' | 'name' | 'type' | 'apiUrl' | 'model' | 'apiToken'>;
 }
 
 /**
@@ -297,8 +302,13 @@ export const PersonaConversationStage = {
 	COMPLETED: 'completed'
 } as const;
 
-export type PersonaConversationStage = (typeof PersonaConversationStage)[keyof typeof PersonaConversationStage];
+export type PersonaConversationStage =
+	(typeof PersonaConversationStage)[keyof typeof PersonaConversationStage];
 
+/**
+ * Council Conversation (Persona-based architecture)
+ * Represents a multi-persona AI consultation session
+ */
 export interface CouncilConversation {
 	id: string;
 	userId: string;
@@ -313,8 +323,13 @@ export interface CouncilConversation {
 	updatedAt: number;
 }
 
+/**
+ * Council Message (Persona-based architecture)
+ * Individual messages within a council conversation
+ */
 export interface CouncilMessage {
 	id: string;
+	userId: string;
 	conversationId: string;
 	personaId: string | null;
 	stage: PersonaConversationStage;
@@ -324,6 +339,10 @@ export interface CouncilMessage {
 	createdAt: number;
 }
 
+/**
+ * Message Ranking (Persona-based architecture)
+ * Rankings given by one persona to evaluate responses from other personas
+ */
 export interface MessageRanking {
 	personaId: string;
 	rank: number;

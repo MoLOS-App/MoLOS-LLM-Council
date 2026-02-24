@@ -1,30 +1,38 @@
 <script lang="ts">
 	import ResponseCard from './response-card.svelte';
 	import { Loader2, Users } from 'lucide-svelte';
+	import type { PersonaWithProvider } from '../../models';
 
 	interface Props {
 		responses: Map<string, string>;
-		personas: any[];
+		personas: PersonaWithProvider[];
 		isActive: boolean;
 		isComplete: boolean;
 	}
 
 	let { responses, personas, isActive, isComplete }: Props = $props();
 
-	function getModelName(modelId: string): string {
-		const parts = modelId.split('/');
-		if (parts.length >= 2) {
-			return parts[1].split(':')[0];
-		}
-		return modelId;
+	function getPersonaName(persona: PersonaWithProvider | undefined): string {
+		return persona?.name || 'Unknown Persona';
+	}
+
+	function getPersonaProviderName(persona: PersonaWithProvider | undefined): string {
+		return persona?.provider?.name || 'Unknown Provider';
 	}
 
 	const responseList = $derived(() => {
-		return Array.from(responses.entries()).map(([modelId, content]) => ({
-			modelId,
-			modelName: getModelName(modelId),
-			content
-		}));
+		return Array.from(responses.entries())
+			.map(([personaId, content]) => {
+				const persona = personas.find((p) => p.id === personaId);
+				return {
+					personaId,
+					persona,
+					personaName: getPersonaName(persona),
+					providerName: getPersonaProviderName(persona),
+					content
+				};
+			})
+			.filter((r) => r.persona); // Only show personas that still exist
 	});
 </script>
 
@@ -37,15 +45,15 @@
 		{/if}
 	</div>
 
-	<p class="text-sm text-muted-foreground">
+	<p class="text-muted-foreground text-sm">
 		Each model provides its independent analysis of the question.
 	</p>
 
 	<div class="grid gap-4 {responseList().length > 2 ? 'md:grid-cols-2' : ''}">
-		{#each responseList() as response (response.modelId)}
+		{#each responseList() as response (response.personaId)}
 			<ResponseCard
-				modelId={response.modelId}
-				modelName={response.modelName}
+				modelId={response.persona?.provider?.model || response.personaId}
+				modelName={`${response.personaName} (${response.providerName})`}
 				content={response.content}
 				stage="stage_1"
 				isStreaming={isActive && !response.content}
@@ -54,7 +62,7 @@
 	</div>
 
 	{#if !isComplete && !isActive}
-		<div class="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center">
 			Waiting to start...
 		</div>
 	{/if}

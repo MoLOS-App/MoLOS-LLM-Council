@@ -6,7 +6,7 @@
 import { Users, MessageSquare, History, Settings, UserCircle } from 'lucide-svelte';
 import type { ModuleConfig } from '$lib/config/types';
 
-export const councilConfig: ModuleConfig = {
+const councilConfig: ModuleConfig = {
 	id: 'MoLOS-LLM-Council',
 	name: 'LLM Council',
 	href: '/ui/MoLOS-LLM-Council',
@@ -36,5 +36,5 @@ export const councilConfig: ModuleConfig = {
 	]
 };
 
-export const moduleConfig = councilConfig;
+export { councilConfig as moduleConfig };
 export default councilConfig;

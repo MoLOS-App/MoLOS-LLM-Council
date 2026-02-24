@@ -27,7 +27,6 @@
 		X
 	} from 'lucide-svelte';
 	import {
-		settingsStore,
 		loadSettings,
 		updateSettings
 	} from '../../../stores/council.store.js';
@@ -35,6 +34,8 @@
 
 	const PROVIDER_TYPES = [
 		{ value: 'openrouter', label: 'OpenRouter' },
+		{ value: 'zai', label: 'Z.AI (General)' },
+		{ value: 'zai_coding', label: 'Z.AI (Coding)' },
 		{ value: 'openai', label: 'OpenAI' },
 		{ value: 'anthropic', label: 'Anthropic' },
 		{ value: 'custom', label: 'Custom' }
@@ -231,10 +232,16 @@
 
 	function handleProviderTypeChange(type: ProviderType) {
 		newProvider.type = type;
-
+		
 		switch (type) {
 			case 'openrouter':
 				newProvider.apiUrl = 'https://openrouter.ai/api/v1';
+				break;
+			case 'zai':
+				newProvider.apiUrl = 'https://api.z.ai/api/paas/v4';
+				break;
+			case 'zai_coding':
+				newProvider.apiUrl = 'https://api.z.ai/api/coding/paas/v4';
 				break;
 			case 'openai':
 				newProvider.apiUrl = 'https://api.openai.com/v1';

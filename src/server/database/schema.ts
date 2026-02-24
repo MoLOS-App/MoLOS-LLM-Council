@@ -47,8 +47,12 @@ export const councilConversations = sqliteTable('MoLOS-LLM-Council_conversations
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
 	userId: text('user_id').notNull(),
+	title: text('title').notNull(),
 	query: text('query').notNull(),
-	stage: text('stage').notNull().default(PersonaConversationStage.INITIAL_RESPONSES),
+	stage: text('stage')
+		.notNull()
+		.$type<PersonaConversationStage>()
+		.default(PersonaConversationStage.INITIAL_RESPONSES),
 	selectedPersonaIds: text('selected_persona_ids').notNull().default('[]'),
 	presidentPersonaId: text('president_persona_id').references(() => councilPersonas.id, { onDelete: 'set null' }),
 	decisionSummary: text('decision_summary'),
@@ -65,9 +69,13 @@ export const councilMessages = sqliteTable('MoLOS-LLM-Council_messages', {
 	id: text('id')
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
+	userId: text('user_id').notNull(),
 	conversationId: text('conversation_id').references(() => councilConversations.id, { onDelete: 'cascade' }),
 	personaId: text('persona_id').references(() => councilPersonas.id, { onDelete: 'set null' }),
-	stage: text('stage').notNull(),
+	stage: text('stage')
+		.notNull()
+		.$type<PersonaConversationStage>()
+		.default(PersonaConversationStage.INITIAL_RESPONSES),
 	role: text('role', { enum: ['user', 'assistant'] }).notNull(),
 	content: text('content').notNull(),
 	rankings: text('rankings'),

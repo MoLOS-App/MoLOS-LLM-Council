@@ -3,22 +3,22 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { ConversationRepository } from '../../server/repositories/conversation-repository';
 import { MessageRepository } from '../../server/repositories/message-repository';
-import { SettingsRepository } from '../../server/repositories/settings-repository';
-import { CouncilStage, MessageRole } from '../../models';
+import { PersonaConversationStage, MessageRole } from '../../models';
 import { db } from '$lib/server/db';
 
 // Validation schemas
 const CreateConversationSchema = z.object({
-	title: z.string().min(1, 'Title is required'),
-	selectedModels: z.array(z.string()).min(1, 'At least one model is required'),
-	synthesizerModel: z.string().optional()
+	query: z.string().min(1, 'Query is required'),
+	selectedPersonaIds: z.array(z.string()).min(1, 'At least one persona is required'),
+	presidentPersonaId: z.string().optional(),
+	title: z.string().optional()
 });
 
 const UpdateConversationSchema = z.object({
 	id: z.string().min(1, 'Conversation ID is required'),
-	title: z.string().optional(),
-	selectedModels: z.array(z.string()).optional(),
-	synthesizerModel: z.string().optional()
+	stage: z.enum(['initial_responses', 'peer_review', 'synthesis', 'completed']).optional(),
+	decisionSummary: z.string().optional(),
+	tags: z.array(z.string()).optional()
 });
 
 /**
@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				throw error(404, 'Conversation not found');
 			}
 
-			const messages = await messageRepo.getByConversationId(conversationId, userId);
+			const messages = await messageRepo.getByConversationId(conversationId);
 
 			return json({ conversation, messages });
 		}
@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 /**
  * POST /api/MoLOS-LLM-Council
- * Create a new conversation
+ * Create a new conversation (persona-based)
  */
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const userId = locals.user?.id;
@@ -78,16 +78,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw error(400, result.error.issues[0].message);
 		}
 
-		const settingsRepo = new SettingsRepository(db);
-		const settings = await settingsRepo.getOrCreate(userId);
+		const { query, selectedPersonaIds, presidentPersonaId, title } = result.data;
 
 		const conversationRepo = new ConversationRepository(db);
-		const conversation = await conversationRepo.create(userId, {
-			title: result.data.title,
-			currentStage: CouncilStage.STAGE_1,
-			selectedModels: result.data.selectedModels,
-			synthesizerModel: result.data.synthesizerModel || settings.defaultSynthesizer
-		});
+		const conversation = await conversationRepo.create(
+			userId,
+			query,
+			selectedPersonaIds,
+			presidentPersonaId
+		);
 
 		return json({ conversation }, { status: 201 });
 	} catch (err) {
@@ -117,16 +116,36 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 			throw error(400, result.error.issues[0].message);
 		}
 
-		const { id, ...updates } = result.data;
+		const { id, stage, decisionSummary, tags } = result.data;
 
 		const conversationRepo = new ConversationRepository(db);
-		const conversation = await conversationRepo.update(id, userId, updates);
 
-		if (!conversation) {
-			throw error(404, 'Conversation not found');
+		if (stage) {
+			// Update stage
+			const conversation = await conversationRepo.updateStage(
+				id,
+				userId,
+				stage as PersonaConversationStage
+			);
+			if (!conversation) {
+				throw error(404, 'Conversation not found');
+			}
+			return json({ conversation });
 		}
 
-		return json({ conversation });
+		if (decisionSummary !== undefined || tags) {
+			// Update other fields
+			const conversation = await conversationRepo.update(id, userId, {
+				decisionSummary,
+				tags: tags ? JSON.stringify(tags) : undefined
+			});
+			if (!conversation) {
+				throw error(404, 'Conversation not found');
+			}
+			return json({ conversation });
+		}
+
+		throw error(400, 'No valid update fields provided');
 	} catch (err) {
 		console.error('Failed to update conversation:', err);
 		if (err instanceof Error && 'status' in err) {

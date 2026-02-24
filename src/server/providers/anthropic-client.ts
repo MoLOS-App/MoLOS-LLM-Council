@@ -30,25 +30,40 @@ export class AnthropicClient extends BaseProviderClient {
 			throw new Error(`Anthropic API error: ${response.status} - ${error}`);
 		}
 
-		for await (const chunk of this.parseStream(response)) {
-			const lines = chunk.split('\n').filter((line) => line.trim() !== '');
+		try {
+			for await (const chunk of this.parseStream(response)) {
+				const lines = chunk.split('\n').filter((line) => line.trim() !== '');
 
-			for (const line of lines) {
-				if (line.startsWith('data: ')) {
-					const data = line.slice(6);
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						const data = line.slice(6);
 
-					try {
-						const parsed = JSON.parse(data);
-						if (parsed.type === 'content_block_delta') {
-							const delta = parsed.delta?.text;
-							if (delta) {
-								onChunk(delta);
+						try {
+							const parsed = JSON.parse(data);
+							// Validate structure before accessing
+							if (parsed && typeof parsed === 'object') {
+								if (parsed.type === 'content_block_delta') {
+									const delta = parsed.delta?.text;
+									if (delta) {
+										onChunk(delta);
+									}
+								}
 							}
+						} catch (e) {
+							// Log with more context for debugging
+							console.warn('[AnthropicClient] Failed to parse SSE data:', {
+								data: data.substring(0, 100),
+								error: e instanceof Error ? e.message : String(e)
+							});
 						}
-					} catch (e) {
-						console.warn('Failed to parse SSE data:', data);
 					}
 				}
+			}
+		} catch (e) {
+			// Catch and re-throw with context if it's not a parsing error
+			if (e instanceof Error && !e.message.includes('Failed to parse SSE')) {
+				console.error('[AnthropicClient] Streaming error:', e);
+				throw new Error(`Anthropic streaming failed: ${e.message}`);
 			}
 		}
 	}

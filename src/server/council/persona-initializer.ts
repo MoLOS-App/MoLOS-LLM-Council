@@ -11,22 +11,21 @@ export async function ensureDefaultPersonasForUser(
 	const personaRepo = new PersonaRepository(dbOverride);
 	const providerRepo = new ProviderRepository();
 
-	let defaultProvider = await providerRepo.getDefault(userId);
-
-	if (!defaultProvider) {
-		defaultProvider = await providerRepo.create({
-			userId,
-			type: 'openrouter' as const,
-			name: 'MoLOS System Provider',
-			apiUrl: 'https://openrouter.ai/api/v1',
-			apiToken: '',
-			model: 'anthropic/claude-3.5-sonnet',
-			isDefault: true
-		});
-	}
-
 	const existingPersonas = await personaRepo.getByUserId(userId);
 	const existingNames = new Set(existingPersonas.map((p) => p.name));
+
+	const existingSystemPersonaNames = ['MoLOS Default Chairman', 'MoLOS Default Member'];
+	const systemPersonasExist = existingSystemPersonaNames.some((name) => existingNames.has(name));
+
+	if (systemPersonasExist) {
+		return;
+	}
+
+	const defaultProvider = await providerRepo.getDefault(userId);
+
+	if (!defaultProvider || !defaultProvider.apiToken) {
+		return;
+	}
 
 	const systemPersonas = [
 		{ ...DEFAULT_SYSTEM_PERSONAS.CHAIRMAN, userId, providerId: defaultProvider.id },

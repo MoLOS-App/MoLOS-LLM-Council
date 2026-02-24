@@ -3,9 +3,18 @@ import type {
 	CouncilConversation,
 	CouncilMessage,
 	PersonaWithProvider,
-	PersonaConversationStage
+	PersonaConversationStage,
+	MessageRanking
 } from '../models';
 import { PersonaConversationStage as PCS } from '../models';
+
+/**
+ * Stage 2 Ranking with Persona (persona-based architecture)
+ */
+export interface Stage2Ranking {
+	reviewerPersonaId: string;
+	rankings: MessageRanking[];
+}
 
 /**
  * Council API Client
@@ -31,7 +40,7 @@ export const messagesStore = writable<CouncilMessage[]>([]);
 
 // Stage-specific stores (persona-based)
 export const stage1ResponsesStore = writable<Map<string, string>>(new Map());
-export const stage2RankingsStore = writable<Array<{ reviewerPersonaId: string; rankings: any[] }>>([]);
+export const stage2RankingsStore = writable<Stage2Ranking[]>([]);
 export const stage3SynthesisStore = writable<string>('');
 
 // UI State
@@ -133,16 +142,16 @@ export async function startCouncil(
 	stage1ResponsesStore.set(new Map());
 	stage2RankingsStore.set([]);
 	stage3SynthesisStore.set('');
-
+	
 	councilUIState.update((s) => ({
 		...s,
 		isStreaming: true,
 		error: null,
 		currentStage: PCS.INITIAL_RESPONSES
 	}));
-
+	
 	try {
-		const response = await fetch(`${API_BASE}/stream`, {
+		const response = await fetch(`${API_BASE}/start`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -152,43 +161,50 @@ export async function startCouncil(
 				streamingEnabled: false
 			})
 		});
-
+		
 		if (!response.ok) {
 			throw new Error(`Failed to start council: ${response.statusText}`);
 		}
-
+		
 		const data = await response.json();
-
+		
+		// Check for error response from API (API returns 200 with error object)
+		if (!data.success) {
+			councilUIState.update((s) => ({ ...s, isStreaming: false, error: data.error || 'An error occurred' }));
+			return { success: false, error: data.error };
+		}
+		
 		// Process stage 1 responses
 		if (data.result?.stage1Responses) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.PEER_REVIEW }));
-
+			
 			const stage1 = new Map<string, string>();
 			for (const resp of data.result.stage1Responses) {
 				stage1.set(resp.personaId, resp.content);
 			}
 			stage1ResponsesStore.set(stage1);
 		}
-
+		
 		// Process stage 2 rankings
 		if (data.result?.stage2Rankings) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.SYNTHESIS }));
-
+			
 			stage2RankingsStore.set(data.result.stage2Rankings);
 		}
-
+		
 		// Process stage 3 synthesis
 		if (data.result?.stage3Synthesis) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.COMPLETED }));
-
+			
 			stage3SynthesisStore.set(data.result.stage3Synthesis);
 		}
-
+		
 		councilUIState.update((s) => ({ ...s, isStreaming: false }));
+		return { success: true, conversationId: data.conversationId, result: data.result };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to start council';
 		councilUIState.update((s) => ({ ...s, isStreaming: false, error: message }));
-		throw err;
+		return { success: false, error: message };
 	}
 }
 

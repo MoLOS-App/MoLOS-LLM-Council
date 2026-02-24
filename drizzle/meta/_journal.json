@@ -4,16 +4,16 @@
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1771455552121,
-      "tag": "0000_strong_dagger",
+      "version": "7",
+      "when": 1740457740000,
+      "tag": "0000_drop_old_tables",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1771541692412,
-      "tag": "0001_heavy_talisman",
+      "version": "7",
+      "when": 1740457741000,
+      "tag": "0001_schema_migration",
       "breakpoints": true
     }
   ]

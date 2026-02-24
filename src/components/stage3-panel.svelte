@@ -30,7 +30,7 @@
 		{/if}
 	</div>
 
-	<p class="text-sm text-muted-foreground">
+	<p class="text-muted-foreground text-sm">
 		A synthesizer model combines insights from all responses into a final answer.
 	</p>
 
@@ -38,17 +38,17 @@
 		<ResponseCard
 			modelId={synthesizerModel}
 			modelName={getModelName(synthesizerModel)}
-			content={content}
+			{content}
 			stage="stage_3"
 			isStreaming={isActive}
 			isSynthesis={true}
 		/>
 	{:else if isComplete}
-		<div class="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center">
 			Synthesis complete but no content was generated
 		</div>
 	{:else}
-		<div class="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center">
 			Synthesis will begin after Stage 2 completes
 		</div>
 	{/if}

@@ -18,13 +18,14 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let name = $state(data.persona.name);
-	let description = $state(data.persona.description || '');
-	let avatar = $state(data.persona.avatar);
-	let personalityPrompt = $state(data.persona.personalityPrompt);
-	let providerId = $state(data.persona.providerId);
-	let isPresident = $state(data.persona.isPresident);
-	let isDefault = $state(data.persona.isDefault);
+	const initialPersona = data.persona;
+	let name = $state(initialPersona.name);
+	let description = $state(initialPersona.description || '');
+	let avatar = $state(initialPersona.avatar);
+	let personalityPrompt = $state(initialPersona.personalityPrompt);
+	let providerId = $state(initialPersona.providerId);
+	let isPresident = $state(initialPersona.isPresident);
+	let isDefault = $state(initialPersona.isDefault);
 	let isSaving = $state(false);
 	let error = $state('');
 

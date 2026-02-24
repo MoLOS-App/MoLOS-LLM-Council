@@ -21,12 +21,21 @@ export const GET: RequestHandler = async ({ locals }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	await ensureDefaultPersonasForUser(userId);
+	try {
+		await ensureDefaultPersonasForUser(userId);
 
-	const personaRepo = new PersonaRepository(db);
-	const personas = await personaRepo.getByUserId(userId);
+		const personaRepo = new PersonaRepository(db);
+		const personas = await personaRepo.getByUserId(userId);
 
-	return json({ personas });
+		return json({ personas });
+	} catch (err) {
+		console.error('[API Error] Failed to fetch personas:', err);
+		// Re-throw if already has a status code (like error() throws)
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to fetch personas');
+	}
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -35,21 +44,30 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		throw error(401, 'Unauthorized');
 	}
 
-	const body = await request.json();
-	const result = CreatePersonaSchema.safeParse(body);
+	try {
+		const body = await request.json();
+		const result = CreatePersonaSchema.safeParse(body);
 
-	if (!result.success) {
-		throw error(400, result.error.issues[0].message);
+		if (!result.success) {
+			throw error(400, result.error.issues[0].message);
+		}
+
+		const personaRepo = new PersonaRepository(db);
+		const persona = await personaRepo.create({
+			userId,
+			...result.data,
+			isPresident: result.data.isPresident || false,
+			isDefault: result.data.isDefault || false,
+			isSystem: false
+		});
+
+		return json({ persona }, { status: 201 });
+	} catch (err) {
+		console.error('[API Error] Failed to create persona:', err);
+		// Re-throw if already has a status code
+		if (err instanceof Error && 'status' in err) {
+			throw err;
+		}
+		throw error(500, 'Failed to create persona');
 	}
-
-	const personaRepo = new PersonaRepository(db);
-	const persona = await personaRepo.create({
-		userId,
-		...result.data,
-		isPresident: result.data.isPresident || false,
-		isDefault: result.data.isDefault || false,
-		isSystem: false
-	});
-
-	return json({ persona }, { status: 201 });
 };

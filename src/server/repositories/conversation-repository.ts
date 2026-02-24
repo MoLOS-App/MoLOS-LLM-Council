@@ -3,6 +3,7 @@ import { councilConversations } from '../database/schema';
 import type { CouncilConversation, PersonaConversationStage } from '../../models';
 import { db as defaultDb } from '$lib/server/db';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { safeJsonParse, handleDatabaseError } from './repository-error-handler.js';
 
 export class ConversationRepository {
 	protected db: BetterSQLite3Database<any>;
@@ -12,33 +13,49 @@ export class ConversationRepository {
 	}
 
 	private mapToConversation(row: Record<string, unknown>): CouncilConversation {
+		const selectedPersonaIds = safeJsonParse<string[]>(
+			row.selectedPersonaIds as string,
+			[],
+			'councilConversations.selectedPersonaIds'
+		);
+
+		const tags = safeJsonParse<string[]>(row.tags as string, [], 'councilConversations.tags');
+
 		return {
 			...row,
-			selectedPersonaIds: JSON.parse((row.selectedPersonaIds as string) || '[]'),
-			tags: JSON.parse((row.tags as string) || '[]'),
+			selectedPersonaIds,
+			tags,
 			messages: []
 		} as CouncilConversation;
 	}
 
 	async getByUserId(userId: string, limit: number = 50): Promise<CouncilConversation[]> {
-		const result = await this.db
-			.select()
-			.from(councilConversations)
-			.where(eq(councilConversations.userId, userId))
-			.orderBy(desc(councilConversations.updatedAt))
-			.limit(limit);
+		try {
+			const result = await this.db
+				.select()
+				.from(councilConversations)
+				.where(eq(councilConversations.userId, userId))
+				.orderBy(desc(councilConversations.updatedAt))
+				.limit(limit);
 
-		return result.map((row) => this.mapToConversation(row));
+			return result.map((row) => this.mapToConversation(row));
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.getByUserId');
+		}
 	}
 
 	async getById(id: string, userId: string): Promise<CouncilConversation | null> {
-		const result = await this.db
-			.select()
-			.from(councilConversations)
-			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
-			.limit(1);
+		try {
+			const result = await this.db
+				.select()
+				.from(councilConversations)
+				.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
+				.limit(1);
 
-		return result[0] ? this.mapToConversation(result[0]) : null;
+			return result[0] ? this.mapToConversation(result[0]) : null;
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.getById');
+		}
 	}
 
 	async create(
@@ -47,19 +64,25 @@ export class ConversationRepository {
 		selectedPersonaIds: string[],
 		presidentPersonaId?: string
 	): Promise<CouncilConversation> {
-		const result = await this.db
-			.insert(councilConversations)
-			.values({
-				userId,
-				query,
-				stage: 'initial_responses' as PersonaConversationStage,
-				selectedPersonaIds: JSON.stringify(selectedPersonaIds),
-				presidentPersonaId: presidentPersonaId || null,
-				tags: JSON.stringify([])
-			})
-			.returning();
+		try {
+			const title = query.trim().slice(0, 100) || 'Untitled Conversation';
+			const result = await this.db
+				.insert(councilConversations)
+				.values({
+					userId,
+					title,
+					query,
+					stage: 'initial_responses' as PersonaConversationStage,
+					selectedPersonaIds: JSON.stringify(selectedPersonaIds),
+					presidentPersonaId: presidentPersonaId || null,
+					tags: JSON.stringify([])
+				})
+				.returning();
 
-		return this.mapToConversation(result[0] as unknown as Record<string, unknown>);
+			return this.mapToConversation(result[0] as unknown as Record<string, unknown>);
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.create');
+		}
 	}
 
 	async updateStage(
@@ -67,24 +90,57 @@ export class ConversationRepository {
 		userId: string,
 		stage: PersonaConversationStage
 	): Promise<CouncilConversation | null> {
-		const result = await this.db
-			.update(councilConversations)
-			.set({
-				stage,
-				updatedAt: Math.floor(Date.now() / 1000)
-			})
-			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
-			.returning();
+		try {
+			const result = await this.db
+				.update(councilConversations)
+				.set({
+					stage,
+					updatedAt: Math.floor(Date.now() / 1000)
+				})
+				.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
+				.returning();
 
-		return result[0] ? this.mapToConversation(result[0] as unknown as Record<string, unknown>) : null;
+			return result[0]
+				? this.mapToConversation(result[0] as unknown as Record<string, unknown>)
+				: null;
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.updateStage');
+		}
+	}
+
+	async update(
+		id: string,
+		userId: string,
+		updates: Partial<{ decisionSummary: string | null; tags: string }>
+	): Promise<CouncilConversation | null> {
+		try {
+			const result = await this.db
+				.update(councilConversations)
+				.set({
+					...updates,
+					updatedAt: Math.floor(Date.now() / 1000)
+				})
+				.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
+				.returning();
+
+			return result[0]
+				? this.mapToConversation(result[0] as unknown as Record<string, unknown>)
+				: null;
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.update');
+		}
 	}
 
 	async delete(id: string, userId: string): Promise<boolean> {
-		const result = await this.db
-			.delete(councilConversations)
-			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)));
+		try {
+			const result = await this.db
+				.delete(councilConversations)
+				.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)));
 
-		return result.changes > 0;
+			return result.changes > 0;
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.delete');
+		}
 	}
 
 	async searchByUserId(
@@ -92,14 +148,18 @@ export class ConversationRepository {
 		searchQuery: string,
 		limit: number = 20
 	): Promise<CouncilConversation[]> {
-		const term = `%${searchQuery}%`;
-		const result = await this.db
-			.select()
-			.from(councilConversations)
-			.where(and(eq(councilConversations.userId, userId), like(councilConversations.query, term)))
-			.orderBy(desc(councilConversations.updatedAt))
-			.limit(limit);
+		try {
+			const term = `%${searchQuery}%`;
+			const result = await this.db
+				.select()
+				.from(councilConversations)
+				.where(and(eq(councilConversations.userId, userId), like(councilConversations.query, term)))
+				.orderBy(desc(councilConversations.updatedAt))
+				.limit(limit);
 
-		return result.map((row) => this.mapToConversation(row));
+			return result.map((row) => this.mapToConversation(row));
+		} catch (error) {
+			handleDatabaseError(error, 'ConversationRepository.searchByUserId');
+		}
 	}
 }

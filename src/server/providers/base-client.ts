@@ -16,7 +16,7 @@ export abstract class BaseProviderClient {
 		onChunk: (chunk: string) => void
 	): Promise<void>;
 
-	protected async* parseStream(response: Response): AsyncGenerator<string, void, unknown> {
+	protected async *parseStream(response: Response): AsyncGenerator<string, void, unknown> {
 		if (!response.body) {
 			throw new Error('No response body');
 		}

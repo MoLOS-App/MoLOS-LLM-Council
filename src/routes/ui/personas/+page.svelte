@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
-	import { Plus, Edit, Trash2, Lock, ArrowLeft } from 'lucide-svelte';
+	import { Plus, Edit, Trash2, Lock, ArrowLeft, Key, Loader2 } from 'lucide-svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import type { PersonaWithProvider } from '../../../models/index.js';
 
@@ -13,8 +13,26 @@
 
 	let { data }: { data: PageData } = $props();
 
+	let providers = $state<any[]>([]);
+	let showSystemProviderModal = $state(false);
+	let selectedSystemPersona = $state<PersonaWithProvider | null>(null);
+	let selectedProviderId = $state('');
+	let isUpdatingProvider = $state(false);
+
 	let systemPersonas = $derived(data.personas.filter((p) => p.isSystem));
 	let userPersonas = $derived(data.personas.filter((p) => !p.isSystem));
+
+	async function loadProviders() {
+		const response = await fetch('/api/MoLOS-LLM-Council/providers');
+		if (response.ok) {
+			const data = await response.json();
+			providers = data.providers || [];
+		}
+	}
+
+	onMount(async () => {
+		await loadProviders();
+	});
 
 	function handleCreate() {
 		goto('/ui/MoLOS-LLM-Council/personas/create');
@@ -22,6 +40,44 @@
 
 	function handleEdit(id: string) {
 		goto(`/ui/MoLOS-LLM-Council/personas/${id}/edit`);
+	}
+
+	function handleChangeSystemProvider(persona: PersonaWithProvider) {
+		selectedSystemPersona = persona;
+		selectedProviderId = persona.providerId || '';
+		showSystemProviderModal = true;
+	}
+
+	async function handleUpdateSystemProvider() {
+		if (!selectedSystemPersona || isUpdatingProvider) return;
+
+		isUpdatingProvider = true;
+		try {
+			const response = await fetch(`/api/MoLOS-LLM-Council/personas/${selectedSystemPersona.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					providerId: selectedProviderId
+				})
+			});
+
+			if (response.ok) {
+				window.location.reload();
+			} else {
+				alert('Failed to update provider');
+			}
+		} catch (err) {
+			alert('Failed to update provider');
+			console.error(err);
+		} finally {
+			isUpdatingProvider = false;
+		}
+	}
+
+	function handleCloseModal() {
+		showSystemProviderModal = false;
+		selectedSystemPersona = null;
+		selectedProviderId = '';
 	}
 
 	async function handleDelete(id: string) {
@@ -89,11 +145,26 @@
 											{persona.description}
 										</p>
 										<div class="mt-2 text-xs">
-											<span class="font-medium">{persona.provider.name}</span>
-											<span class="text-muted-foreground/70"> - </span>
-											<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+											{#if persona.provider}
+												<span class="font-medium">{persona.provider.name}</span>
+												<span class="text-muted-foreground/70"> - </span>
+												<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+											{:else}
+												<span class="text-destructive">No provider configured</span>
+											{/if}
 										</div>
 									</div>
+								</div>
+								<div class="mt-2 flex gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										class="flex-1"
+										onclick={() => handleChangeSystemProvider(persona)}
+									>
+										<Key class="mr-1 h-3 w-3" />
+										Change Provider
+									</Button>
 								</div>
 							</CardContent>
 						</Card>
@@ -101,6 +172,52 @@
 				</div>
 			</CardContent>
 		</Card>
+	{/if}
+
+	<!-- Provider Modal -->
+	{#if showSystemProviderModal && selectedSystemPersona}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+			<Card class="w-full max-w-md">
+				<CardHeader>
+					<CardTitle>Change Provider for {selectedSystemPersona.name}</CardTitle>
+					<CardDescription>Select a new AI provider for this system persona</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-4">
+					{#if providers.length === 0}
+						<p class="text-sm text-muted-foreground">No providers available. Create a provider first.</p>
+					{:else}
+						<div class="space-y-2">
+							<label for="provider-select" class="text-sm font-medium">Provider</label>
+							<select
+								id="provider-select"
+								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+								bind:value={selectedProviderId}
+							>
+								{#each providers as provider}
+									<option value={provider.id}>
+										{provider.name} ({provider.model})
+									</option>
+								{/each}
+							</select>
+						</div>
+					{/if}
+					<div class="flex gap-2 pt-2">
+						<Button variant="outline" onclick={handleCloseModal} disabled={isUpdatingProvider}>
+							Cancel
+						</Button>
+						<Button
+							onclick={handleUpdateSystemProvider}
+							disabled={isUpdatingProvider || !selectedProviderId}
+						>
+							{#if isUpdatingProvider}
+								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+							{/if}
+							Update Provider
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
 	{/if}
 
 	<Card>
