@@ -6,14 +6,10 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { safeJsonParse, handleDatabaseError } from './repository-error-handler.js';
 
 const DEFAULT_SETTINGS = {
-		defaultModels: [
-			'anthropic/claude-3.5-sonnet',
-			'openai/gpt-4o',
-			'google/gemini-2.0-flash-001'
-		],
-		defaultSynthesizer: 'anthropic/claude-3.5-sonnet',
-		streamingEnabled: true
-	};
+	defaultModels: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'google/gemini-2.0-flash-001'],
+	defaultSynthesizer: 'anthropic/claude-3.5-sonnet',
+	streamingEnabled: true
+};
 
 /**
  * Insert data shape for councilSettings table
@@ -49,7 +45,8 @@ export class SettingsRepository {
 			...row,
 			openrouterApiKey: (row.openrouterApiKey as string) || undefined,
 			defaultModels,
-			defaultSynthesizer: (row.defaultSynthesizer as string) || DEFAULT_SETTINGS.defaultSynthesizer || '',
+			defaultSynthesizer:
+				(row.defaultSynthesizer as string) || DEFAULT_SETTINGS.defaultSynthesizer || '',
 			customStage1Prompt: (row.customStage1Prompt as string) || undefined,
 			customStage2Prompt: (row.customStage2Prompt as string) || undefined,
 			customStage3Prompt: (row.customStage3Prompt as string) || undefined
@@ -110,13 +107,20 @@ export class SettingsRepository {
 			};
 
 			// Add only the fields that are actually provided in input
-			if (input.openrouterApiKey !== undefined) updateData.openrouterApiKey = input.openrouterApiKey;
-			if (input.defaultModels !== undefined) updateData.defaultModels = JSON.stringify(input.defaultModels);
-			if (input.defaultSynthesizer !== undefined) updateData.defaultSynthesizer = input.defaultSynthesizer;
-			if (input.customStage1Prompt !== undefined) updateData.customStage1Prompt = input.customStage1Prompt;
-			if (input.customStage2Prompt !== undefined) updateData.customStage2Prompt = input.customStage2Prompt;
-			if (input.customStage3Prompt !== undefined) updateData.customStage3Prompt = input.customStage3Prompt;
-			if (input.streamingEnabled !== undefined) updateData.streamingEnabled = input.streamingEnabled;
+			if (input.openrouterApiKey !== undefined)
+				updateData.openrouterApiKey = input.openrouterApiKey;
+			if (input.defaultModels !== undefined)
+				updateData.defaultModels = JSON.stringify(input.defaultModels);
+			if (input.defaultSynthesizer !== undefined)
+				updateData.defaultSynthesizer = input.defaultSynthesizer;
+			if (input.customStage1Prompt !== undefined)
+				updateData.customStage1Prompt = input.customStage1Prompt;
+			if (input.customStage2Prompt !== undefined)
+				updateData.customStage2Prompt = input.customStage2Prompt;
+			if (input.customStage3Prompt !== undefined)
+				updateData.customStage3Prompt = input.customStage3Prompt;
+			if (input.streamingEnabled !== undefined)
+				updateData.streamingEnabled = input.streamingEnabled;
 
 			const result = await this.db
 				.update(councilSettings)
@@ -153,13 +157,20 @@ export class SettingsRepository {
 			};
 
 			// Override with input values
-			if (input.openrouterApiKey !== undefined) insertData.openrouterApiKey = input.openrouterApiKey;
-			if (input.defaultModels !== undefined) insertData.defaultModels = JSON.stringify(input.defaultModels);
-			if (input.defaultSynthesizer !== undefined) insertData.defaultSynthesizer = input.defaultSynthesizer;
-			if (input.customStage1Prompt !== undefined) insertData.customStage1Prompt = input.customStage1Prompt;
-			if (input.customStage2Prompt !== undefined) insertData.customStage2Prompt = input.customStage2Prompt;
-			if (input.customStage3Prompt !== undefined) insertData.customStage3Prompt = input.customStage3Prompt;
-			if (input.streamingEnabled !== undefined) insertData.streamingEnabled = input.streamingEnabled;
+			if (input.openrouterApiKey !== undefined)
+				insertData.openrouterApiKey = input.openrouterApiKey;
+			if (input.defaultModels !== undefined)
+				insertData.defaultModels = JSON.stringify(input.defaultModels);
+			if (input.defaultSynthesizer !== undefined)
+				insertData.defaultSynthesizer = input.defaultSynthesizer;
+			if (input.customStage1Prompt !== undefined)
+				insertData.customStage1Prompt = input.customStage1Prompt;
+			if (input.customStage2Prompt !== undefined)
+				insertData.customStage2Prompt = input.customStage2Prompt;
+			if (input.customStage3Prompt !== undefined)
+				insertData.customStage3Prompt = input.customStage3Prompt;
+			if (input.streamingEnabled !== undefined)
+				insertData.streamingEnabled = input.streamingEnabled;
 
 			const result = await this.db.insert(councilSettings).values(insertData).returning();
 

@@ -1,5 +1,11 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import type { PersonaWithProvider } from '$lib/modules/MoLOS-LLM-Council/models';
+
+interface PageData {
+	persona: PersonaWithProvider | null;
+	providers: unknown[];
+}
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	try {
@@ -37,7 +43,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		}
 		console.error('Failed to load persona:', err);
 		return {
-			persona: null as any,
+			persona: null,
 			providers: []
 		};
 	}

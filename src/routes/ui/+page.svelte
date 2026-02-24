@@ -37,6 +37,27 @@
 		}
 	});
 
+	// Auto-switch tabs when stages complete
+	$effect(() => {
+		const stage = $councilUIState.currentStage;
+		const isStreaming = $councilUIState.isStreaming;
+		const hasStage1 = $stage1ResponsesStore.size > 0;
+		const hasStage2 = $stage2RankingsStore.length > 0;
+		const hasStage3 = $stage3SynthesisStore.length > 0;
+
+		// Only auto-switch when not streaming (processing complete)
+		if (!isStreaming) {
+			// When all stages are complete, show the synthesis (stage 3)
+			if (stage === 'completed' && hasStage3) {
+				activeTab = 'stage3';
+			} else if (stage === 'synthesis' && hasStage3) {
+				activeTab = 'stage3';
+			} else if (stage === 'peer_review' && hasStage2) {
+				activeTab = 'stage2';
+			}
+		}
+	});
+
 	onMount(async () => {
 		const personasResponse = await fetch('/api/MoLOS-LLM-Council/personas');
 		if (personasResponse.ok) {
@@ -211,13 +232,18 @@
 			</TabsList>
 
 			<TabsContent value="stage1" class="mt-4">
-				<Stage1Panel responses={$stage1ResponsesStore} />
+				<Stage1Panel
+					responses={$stage1ResponsesStore}
+					personas={availablePersonas}
+					isActive={currentStage === 'initial_responses'}
+					isComplete={currentStage !== 'initial_responses'}
+				/>
 			</TabsContent>
 
 			<TabsContent value="stage2" class="mt-4">
 				<Stage2Panel
 					rankings={$stage2RankingsStore}
-					personas={[]}
+					personas={availablePersonas}
 					isActive={currentStage === 'peer_review'}
 					isComplete={['synthesis', 'completed'].includes(currentStage)}
 				/>

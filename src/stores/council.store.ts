@@ -142,14 +142,14 @@ export async function startCouncil(
 	stage1ResponsesStore.set(new Map());
 	stage2RankingsStore.set([]);
 	stage3SynthesisStore.set('');
-	
+
 	councilUIState.update((s) => ({
 		...s,
 		isStreaming: true,
 		error: null,
 		currentStage: PCS.INITIAL_RESPONSES
 	}));
-	
+
 	try {
 		const response = await fetch(`${API_BASE}/start`, {
 			method: 'POST',
@@ -161,44 +161,59 @@ export async function startCouncil(
 				streamingEnabled: false
 			})
 		});
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to start council: ${response.statusText}`);
 		}
-		
+
 		const data = await response.json();
-		
-		// Check for error response from API (API returns 200 with error object)
-		if (!data.success) {
-			councilUIState.update((s) => ({ ...s, isStreaming: false, error: data.error || 'An error occurred' }));
+
+		// Check for error response from API
+		// API can return either { success: false, error: "..." } or { conversationId, result }
+		if (data.success === false) {
+			councilUIState.update((s) => ({
+				...s,
+				isStreaming: false,
+				error: data.error || 'An error occurred'
+			}));
 			return { success: false, error: data.error };
 		}
-		
+
+		// Validate we have the expected response structure
+		if (!data.result && !data.conversationId) {
+			councilUIState.update((s) => ({
+				...s,
+				isStreaming: false,
+				error: 'Invalid response from server'
+			}));
+			return { success: false, error: 'Invalid response from server' };
+		}
+
 		// Process stage 1 responses
 		if (data.result?.stage1Responses) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.PEER_REVIEW }));
-			
+
 			const stage1 = new Map<string, string>();
 			for (const resp of data.result.stage1Responses) {
 				stage1.set(resp.personaId, resp.content);
 			}
 			stage1ResponsesStore.set(stage1);
 		}
-		
+
 		// Process stage 2 rankings
 		if (data.result?.stage2Rankings) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.SYNTHESIS }));
-			
+
 			stage2RankingsStore.set(data.result.stage2Rankings);
 		}
-		
+
 		// Process stage 3 synthesis
 		if (data.result?.stage3Synthesis) {
 			councilUIState.update((s) => ({ ...s, currentStage: PCS.COMPLETED }));
-			
+
 			stage3SynthesisStore.set(data.result.stage3Synthesis);
 		}
-		
+
 		councilUIState.update((s) => ({ ...s, isStreaming: false }));
 		return { success: true, conversationId: data.conversationId, result: data.result };
 	} catch (err) {
