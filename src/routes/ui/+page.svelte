@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Button } from '$lib/components/ui/button';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { Textarea } from '$lib/components/ui/textarea/index.js';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs/index.js';
 	import {
 		Send,
 		Loader2,
@@ -25,29 +25,44 @@
 		currentConversationStore,
 		startCouncil,
 		loadSettings
-	} from '../../stores/council.store';
-	import { Stage1Panel, Stage2Panel, Stage3Panel } from '../../components';
+	} from '../../stores/council.store.js';
+	import { Stage1Panel, Stage2Panel, Stage3Panel, PersonaGrid } from '../../components/index.js';
+	import type { PersonaWithProvider } from '../../models/index.js';
 
 	let query = $state('');
-	let selectedModels = $state<string[]>([]);
-	let synthesizerModel = $state<string>('');
+	let selectedPersonaIds = $state<string[]>([]);
+	let presidentPersonaId = $state<string | null>(null);
+	let availablePersonas = $state<PersonaWithProvider[]>([]);
 	let activeTab = $state('stage1');
-
-	const POPULAR_MODELS = [
-		{ id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
-		{ id: 'openai/gpt-4o', name: 'GPT-4o' },
-		{ id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
-		{ id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B' },
-		{ id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' }
-	];
 
 	onMount(async () => {
 		const settings = await loadSettings();
-		selectedModels = settings.defaultModels?.slice(0, 3) || [];
-		synthesizerModel = settings.defaultSynthesizer || 'anthropic/claude-3.5-sonnet';
+		const personasResponse = await fetch('/api/MoLOS-LLM-Council/personas');
+		if (personasResponse.ok) {
+			const data = await personasResponse.json();
+			availablePersonas = data.personas || [];
+		}
+
+		if (selectedPersonaIds.length === 0) {
+			const systemPersonas = availablePersonas.filter((p) => p.isSystem);
+			const defaultMember = systemPersonas.find((p) => p.name.includes('Member'));
+			const defaultChairman = systemPersonas.find((p) => p.name.includes('Chairman'));
+
+			if (defaultMember) {
+				selectedPersonaIds = [defaultMember.id, defaultMember.id, defaultMember.id];
+			}
+			if (defaultChairman) {
+				presidentPersonaId = defaultChairman.id;
+			}
+		}
 	});
 
-	const isFormValid = $derived(query.trim().length > 0 && selectedModels.length > 0);
+	const isFormValid = $derived(
+		query.trim().length > 0 &&
+			selectedPersonaIds.length > 0 &&
+			selectedPersonaIds.length <= 10 &&
+			presidentPersonaId !== null
+	);
 
 	const currentStage = $derived($councilUIState.currentStage);
 
@@ -56,16 +71,24 @@
 
 		activeTab = 'stage1';
 
-		await startCouncil(query.trim(), selectedModels, synthesizerModel);
+		await startCouncil(query.trim(), selectedPersonaIds, presidentPersonaId);
 	}
 
-	function toggleModel(modelId: string) {
+	function handlePersonaSelect(personaId: string) {
 		if ($councilUIState.isStreaming) return;
 
-		if (selectedModels.includes(modelId)) {
-			selectedModels = selectedModels.filter((id) => id !== modelId);
-		} else if (selectedModels.length < 5) {
-			selectedModels = [...selectedModels, modelId];
+		const count = selectedPersonaIds.filter((id) => id === personaId).length;
+		if (count < 3 && selectedPersonaIds.length < 10) {
+			selectedPersonaIds = [...selectedPersonaIds, personaId];
+		}
+	}
+
+	function handlePersonaRemove(personaId: string) {
+		if ($councilUIState.isStreaming) return;
+
+		const index = selectedPersonaIds.lastIndexOf(personaId);
+		if (index !== -1) {
+			selectedPersonaIds = selectedPersonaIds.filter((_, i) => i !== index);
 		}
 	}
 </script>
@@ -78,7 +101,7 @@
 		</p>
 	</div>
 
-	{#if !$settingsStore?.hasApiKey}
+	{#if !($settingsStore?.hasApiKey ?? false)}
 		<Card class="mb-6 border-amber-500/50 bg-amber-500/10">
 			<CardContent class="flex items-center gap-3 p-4">
 				<AlertCircle class="h-5 w-5 text-amber-500" />
@@ -96,6 +119,7 @@
 		</Card>
 	{/if}
 
+	<div>
 	<!-- Input Section -->
 	<Card class="mb-6">
 		<CardHeader>
@@ -109,46 +133,40 @@
 				disabled={$councilUIState.isStreaming}
 			/>
 
-			<!-- Model Selection -->
-			<div class="space-y-2">
-				<p class="text-sm font-medium">
-					Select Models ({selectedModels.length}/5)
-				</p>
-				<div class="flex flex-wrap gap-2">
-					{#each POPULAR_MODELS as model}
-						{@const isSelected = selectedModels.includes(model.id)}
-						<Button
-							variant={isSelected ? 'default' : 'outline'}
-							size="sm"
-							onclick={() => toggleModel(model.id)}
-							disabled={$councilUIState.isStreaming || (!isSelected && selectedModels.length >= 5)}
-						>
-							{model.name}
-						</Button>
-					{/each}
+			<!-- Persona Selection Section -->
+			<div class="space-y-4">
+				<div class="flex items-center justify-between">
+					<p class="text-sm font-medium">
+						Select Council Members ({selectedPersonaIds.length}/10)
+					</p>
+					<Button variant="outline" size="sm" onclick={() => goto('/ui/MoLOS-LLM-Council/personas')}>
+						Manage Personas
+					</Button>
 				</div>
-			</div>
 
-			<!-- Synthesizer -->
-			<div class="flex items-center gap-2">
-				<span class="text-sm">Synthesizer:</span>
-				<select
-					class="rounded-md border bg-background px-2 py-1 text-sm"
-					bind:value={synthesizerModel}
-					disabled={$councilUIState.isStreaming}
-				>
-					{#each POPULAR_MODELS as model}
-						<option value={model.id}>{model.name}</option>
-					{/each}
-				</select>
+				{#if presidentPersonaId !== null}
+					<div class="president-display">
+						<span class="text-sm text-muted-foreground">Council Chairman:</span>
+						<Badge variant="outline">
+							👑 {availablePersonas.find((p) => p.id === presidentPersonaId)?.name || 'Not selected'}
+						</Badge>
+					</div>
+				{/if}
+
+				<PersonaGrid
+					personas={availablePersonas}
+					selectedIds={selectedPersonaIds}
+					presidentId={presidentPersonaId}
+					editable={!$councilUIState.isStreaming}
+					onSelect={handlePersonaSelect}
+					onRemove={handlePersonaRemove}
+				/>
 			</div>
 
 			<!-- Submit -->
 			<div class="flex items-center justify-between">
 				{#if $councilUIState.error}
 					<p class="text-sm text-destructive">{$councilUIState.error}</p>
-				{:else}
-					<div></div>
 				{/if}
 				<Button onclick={handleSubmit} disabled={!isFormValid || $councilUIState.isStreaming}>
 					{#if $councilUIState.isStreaming}
@@ -193,7 +211,7 @@
 			<TabsContent value="stage1" class="mt-4">
 				<Stage1Panel
 					responses={$stage1ResponsesStore}
-					models={selectedModels}
+					personas={[]}
 					isActive={currentStage === 'stage_1'}
 					isComplete={['stage_2', 'stage_3', 'complete'].includes(currentStage)}
 				/>
@@ -202,7 +220,7 @@
 			<TabsContent value="stage2" class="mt-4">
 				<Stage2Panel
 					rankings={$stage2RankingsStore}
-					models={selectedModels}
+					personas={[]}
 					isActive={currentStage === 'stage_2'}
 					isComplete={['stage_3', 'complete'].includes(currentStage)}
 				/>
@@ -211,13 +229,15 @@
 			<TabsContent value="stage3" class="mt-4">
 				<Stage3Panel
 					content={$stage3SynthesisStore}
-					synthesizerModel={synthesizerModel}
+					presidentPersonaId={null}
+					personas={[]}
 					isActive={currentStage === 'stage_3'}
 					isComplete={currentStage === 'complete'}
 				/>
 			</TabsContent>
 		</Tabs>
 	{/if}
+	</div>
 
 	<!-- Settings Link -->
 	<div class="mt-8 flex justify-center">
@@ -225,5 +245,14 @@
 			<Settings class="mr-2 h-4 w-4" />
 			Council Settings
 		</Button>
+		</div>
 	</div>
-</div>
+
+	<style>
+	.president-display {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+</style>

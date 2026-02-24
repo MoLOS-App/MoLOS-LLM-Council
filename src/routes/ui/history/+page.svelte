@@ -16,6 +16,7 @@
 	import { Sidebar, Stage1Panel, Stage2Panel, Stage3Panel } from '../../../components';
 	import { Button } from '$lib/components/ui/button';
 	import { Plus, ArrowLeft } from 'lucide-svelte';
+	import type { CouncilConversation } from '$models';
 
 	onMount(() => {
 		loadConversations().catch(console.error);
@@ -40,8 +41,8 @@
 		}
 	}
 
-	function getModelIdsFromConversation(): string[] {
-		return $currentConversationStore?.selectedModels || [];
+	function getPersonaIdsFromConversation(): string[] {
+		return ($currentConversationStore as CouncilConversation | null)?.selectedPersonaIds || [];
 	}
 </script>
 
@@ -67,14 +68,14 @@
 				</Button>
 			</div>
 
-			<h2 class="mb-4 text-xl font-semibold">{$currentConversationStore?.title}</h2>
+			<h2 class="mb-4 text-xl font-semibold">{$currentConversationStore?.title || 'Council'}</h2>
 
 			<!-- Display stages based on conversation state -->
 			<div class="space-y-8">
 				{#if $stage1ResponsesStore.size > 0}
 					<Stage1Panel
 						responses={$stage1ResponsesStore}
-						models={getModelIdsFromConversation()}
+						personas={[]}
 						isActive={false}
 						isComplete={true}
 					/>
@@ -83,7 +84,7 @@
 				{#if $stage2RankingsStore.length > 0}
 					<Stage2Panel
 						rankings={$stage2RankingsStore}
-						models={getModelIdsFromConversation()}
+						personas={[]}
 						isActive={false}
 						isComplete={true}
 					/>
@@ -92,7 +93,8 @@
 				{#if $stage3SynthesisStore}
 					<Stage3Panel
 						content={$stage3SynthesisStore}
-						synthesizerModel={$currentConversationStore?.synthesizerModel}
+						presidentPersonaId={null}
+						personas={[]}
 						isActive={false}
 						isComplete={true}
 					/>

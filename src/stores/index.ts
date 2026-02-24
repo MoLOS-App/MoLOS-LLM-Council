@@ -1,4 +1,2 @@
-/**
- * LLM Council Stores - Public exports
- */
+export * from './personas.store.js';
 export * from './council.store.js';

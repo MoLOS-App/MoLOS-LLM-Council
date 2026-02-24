@@ -1,0 +1,15 @@
+{
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "0001",
+      "when": 1739969871000
+    },
+    {
+      "idx": 1,
+      "version": "0002",
+      "when": 1739969871000
+    }
+  ]
+}

@@ -3,7 +3,7 @@
  * Defines routes, navigation items, and metadata for the LLM Council module
  */
 
-import { Users, MessageSquare, History, Settings } from 'lucide-svelte';
+import { Users, MessageSquare, History, Settings, UserCircle } from 'lucide-svelte';
 import type { ModuleConfig } from '$lib/config/types';
 
 export const councilConfig: ModuleConfig = {
@@ -17,6 +17,11 @@ export const councilConfig: ModuleConfig = {
 			name: 'Council',
 			icon: MessageSquare,
 			href: '/ui/MoLOS-LLM-Council'
+		},
+		{
+			name: 'Personas',
+			icon: UserCircle,
+			href: '/ui/MoLOS-LLM-Council/personas'
 		},
 		{
 			name: 'History',

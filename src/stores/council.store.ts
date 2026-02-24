@@ -5,9 +5,14 @@ import type {
 	CouncilSettings,
 	SSEEvent,
 	ModelRanking,
-	CouncilStage
+	CouncilStage,
+	PersonaWithProvider,
+	PersonaConversationStage
 } from '../models';
 import { SSEEventType, CouncilStage as CS } from '../models';
+
+// Union type for both old and new stage systems
+type AnyStage = CouncilStage | PersonaConversationStage;
 
 /**
  * Council API Client
@@ -42,7 +47,7 @@ export const councilUIState = writable({
 	loading: false,
 	error: null as string | null,
 	isStreaming: false,
-	currentStage: 'stage_1' as CouncilStage,
+	currentStage: 'stage_1' as AnyStage,
 	lastLoaded: null as number | null
 });
 
@@ -59,6 +64,14 @@ export const stage1ResponsesArray = derived(stage1ResponsesStore, ($map) => {
 		content
 	}));
 });
+
+/**
+ * Load personas
+ */
+export async function loadPersonas(): Promise<PersonaWithProvider[]> {
+	const data = await apiFetch<{ personas: PersonaWithProvider[] }>('/personas');
+	return data.personas;
+}
 
 /**
  * Load conversations
@@ -127,7 +140,11 @@ export async function loadConversation(conversationId: string) {
 /**
  * Start a council session with streaming
  */
-export async function startCouncil(query: string, models?: string[], synthesizerModel?: string) {
+export async function startCouncil(
+	query: string,
+	personaIds?: string[],
+	presidentPersonaId?: string
+) {
 	// Reset stage stores
 	stage1ResponsesStore.set(new Map());
 	stage2RankingsStore.set([]);
@@ -137,14 +154,14 @@ export async function startCouncil(query: string, models?: string[], synthesizer
 		...s,
 		isStreaming: true,
 		error: null,
-		currentStage: CS.STAGE_1
+		currentStage: 'initial_responses' as PersonaConversationStage
 	}));
 
 	try {
 		const response = await fetch(`${API_BASE}/stream`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ query, models, synthesizerModel })
+			body: JSON.stringify({ query, personaIds, presidentPersonaId })
 		});
 
 		if (!response.ok) {
@@ -269,7 +286,12 @@ export async function loadSettings() {
 /**
  * Update settings
  */
-export async function updateSettings(data: Partial<CouncilSettings>) {
+export async function updateSettings(data: {
+	streamingEnabled?: boolean;
+	customStage1Prompt?: string;
+	customStage2Prompt?: string;
+	customStage3Prompt?: string;
+}) {
 	const settings = await apiFetch<CouncilSettings>('/settings', {
 		method: 'PUT',
 		body: JSON.stringify(data)
