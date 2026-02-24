@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
@@ -8,6 +9,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Badge } from '$lib/components/ui/badge';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import { ArrowLeft, Save, Loader2, Crown, Sparkles } from 'lucide-svelte';
 	import type { PersonaWithProvider, AIProvider } from '../../../../../models/index.js';
 
@@ -28,6 +30,7 @@
 	let isDefault = $state(initialPersona.isDefault);
 	let isSaving = $state(false);
 	let error = $state('');
+	let showDeleteDialog = $state(false);
 
 	const AVATARS = ['🎭', '👨‍💻', '👩‍💻', '🧙', '🧛', '🎨', '🎼', '🎪', '🧑‍🎓', '👴', '🦄', '🚀', '💡', '🎯', '🔬'];
 
@@ -77,17 +80,25 @@
 		goto('/ui/MoLOS-LLM-Council/personas');
 	}
 
-	function handleDelete() {
-		if (confirm('Are you sure you want to delete this persona?')) {
-			fetch(`/api/MoLOS-LLM-Council/personas/${data.persona.id}`, { method: 'DELETE' }).then(
-				(response) => {
-					if (response.ok) {
-						goto('/ui/MoLOS-LLM-Council/personas');
-					} else {
-						alert('Failed to delete persona');
-					}
-				}
-			);
+	function handleDeleteRequest() {
+		showDeleteDialog = true;
+	}
+
+	async function confirmDelete() {
+		try {
+			const response = await fetch(`/api/MoLOS-LLM-Council/personas/${data.persona.id}`, {
+				method: 'DELETE'
+			});
+			if (response.ok) {
+				goto('/ui/MoLOS-LLM-Council/personas');
+			} else {
+				toast.error('Failed to delete persona');
+			}
+		} catch (err) {
+			toast.error('Failed to delete persona');
+			console.error(err);
+		} finally {
+			showDeleteDialog = false;
 		}
 	}
 </script>
@@ -107,7 +118,7 @@
 					</div>
 				</div>
 				<div class="flex gap-2">
-					<Button variant="destructive" onclick={handleDelete} disabled={isSaving}>
+					<Button variant="destructive" onclick={handleDeleteRequest} disabled={isSaving}>
 						Delete
 					</Button>
 					<Button onclick={handleSave} disabled={!isValid || isSaving}>
@@ -328,4 +339,24 @@
 			</div>
 		</div>
 	</main>
+
+	<!-- Delete Confirmation Dialog -->
+	<Dialog.Root bind:open={showDeleteDialog}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete Persona?</Dialog.Title>
+				<Dialog.Description>
+					Are you sure you want to delete this persona? This action cannot be undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>
+					Cancel
+				</Button>
+				<Button variant="destructive" onclick={confirmDelete}>
+					Delete
+				</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 </div>

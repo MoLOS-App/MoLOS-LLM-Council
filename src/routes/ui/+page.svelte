@@ -26,6 +26,7 @@
 	let presidentPersonaId = $state<string | null>(null);
 	let availablePersonas = $state<PersonaWithProvider[]>([]);
 	let activeTab = $state('stage1');
+	let personasLoaded = false;
 
 	const availablePresidents = $derived(availablePersonas.filter((p) => p.isPresident));
 
@@ -59,6 +60,10 @@
 	});
 
 	onMount(async () => {
+		// Only load personas once
+		if (personasLoaded) return;
+		personasLoaded = true;
+
 		const personasResponse = await fetch('/api/MoLOS-LLM-Council/personas');
 		if (personasResponse.ok) {
 			const data = await personasResponse.json();

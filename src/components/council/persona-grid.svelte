@@ -1,8 +1,6 @@
 <script lang="ts">
 	import type { PersonaWithProvider } from '../../models';
-	import { Plus, Minus } from 'lucide-svelte';
 	import { Card, CardContent } from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 
 	interface Props {
@@ -14,36 +12,59 @@
 		onRemove: (personaId: string) => void;
 	}
 
-	let { personas, selectedIds = [], presidentId = null, editable = true, onSelect, onRemove }: Props = $props();
+	let {
+		personas,
+		selectedIds = [],
+		presidentId = null,
+		editable = true,
+		onSelect,
+		onRemove
+	}: Props = $props();
 
 	const getSelectionCount = (personaId: string) => {
 		return selectedIds.filter((id) => id === personaId).length;
 	};
 
-	const MAX_INSTANCES = 3;
 	const MAX_TOTAL_MEMBERS = 10;
 
-	const canAddMore = (personaId: string) => {
+	function handleCardClick(personaId: string) {
+		if (!editable) return;
+
 		const count = getSelectionCount(personaId);
 		const totalSelected = selectedIds.length;
-		return count < MAX_INSTANCES && totalSelected < MAX_TOTAL_MEMBERS;
-	};
+
+		if (count > 0) {
+			// Already selected - remove one instance
+			onRemove(personaId);
+		} else if (totalSelected < MAX_TOTAL_MEMBERS) {
+			// Not selected - add it
+			onSelect(personaId);
+		}
+	}
 </script>
 
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 	{#each personas as persona}
 		{@const count = getSelectionCount(persona.id)}
 		{@const isSelected = count > 0}
-		{@const canAdd = canAddMore(persona.id)}
+		{@const totalSelected = selectedIds.length}
+		{@const canSelect = !isSelected && totalSelected < MAX_TOTAL_MEMBERS}
 
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<Card
 			class="group relative overflow-hidden transition-all hover:shadow-md {isSelected
-				? 'border-primary bg-primary/5'
-				: 'border-border hover:border-primary/50'}"
+				? 'border-primary bg-primary/5 ring-2 ring-primary/30'
+				: canSelect && editable
+					? 'cursor-pointer border-border hover:border-primary/50'
+					: 'border-border opacity-60'}"
+			onclick={() => handleCardClick(persona.id)}
 		>
 			<CardContent class="p-5">
 				<div class="flex gap-3">
-					<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+					<div
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl"
+					>
 						{persona.avatar}
 					</div>
 
@@ -58,55 +79,38 @@
 								{/if}
 							</div>
 
-							{#if editable}
-								{#if isSelected}
-									<div class="flex items-center gap-1.5 shrink-0">
-										<Button
-											variant="outline"
-											size="icon"
-											class="h-7 w-7 border-primary/50 bg-primary/10 hover:bg-primary/20"
-											disabled={!canAdd || !editable}
-											onclick={() => onSelect(persona.id)}
-										>
-											<Plus class="h-3.5 w-3.5" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											class="h-7 w-7 text-destructive hover:bg-destructive/10"
-											onclick={() => onRemove(persona.id)}
-											disabled={!editable}
-										>
-											<Minus class="h-3.5 w-3.5" />
-										</Button>
-									</div>
-								{:else}
-									<Button
-										variant="ghost"
-										size="icon"
-										class="h-8 w-8 shrink-0 rounded-full border hover:bg-primary/10"
-										disabled={!editable}
-										onclick={() => onSelect(persona.id)}
-									>
-										<Plus class="h-4 w-4" />
-									</Button>
-								{/if}
+							{#if isSelected}
+								<div
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+								>
+									{count}
+								</div>
+							{:else if editable && canSelect}
+								<div
+									class="border-muted-foreground/30 text-muted-foreground/50 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed text-lg"
+								>
+									+
+								</div>
 							{/if}
 						</div>
 
-						<p class="mb-3 line-clamp-2 text-xs text-muted-foreground">
+						<p class="text-muted-foreground mb-3 line-clamp-2 text-xs">
 							{persona.description}
 						</p>
 
 						<div class="mb-2 text-xs">
 							<span class="font-medium">{persona.provider.name}</span>
 							<span class="text-muted-foreground/70"> - </span>
-							<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+							<span class="text-muted-foreground/70 font-mono">{persona.provider.model}</span>
 						</div>
 
 						{#if isSelected}
 							<Badge variant="default" class="w-fit shrink-0">
-								{count}x selected
+								{#if count > 1}
+									{count}x selected
+								{:else}
+									Selected
+								{/if}
 							</Badge>
 						{/if}
 					</div>
@@ -115,3 +119,9 @@
 		</Card>
 	{/each}
 </div>
+
+{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
+	<p class="text-muted-foreground mt-4 text-center text-sm">
+		Maximum {MAX_TOTAL_MEMBERS} council members reached. Click a selected member to remove.
+	</p>
+{/if}

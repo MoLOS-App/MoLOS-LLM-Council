@@ -2,10 +2,10 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { Button } from '$lib/components/ui/button';
 	import { MessageSquare, Plus, Trash2, Clock } from 'lucide-svelte';
-	import type { Conversation } from '../models';
+	import type { CouncilConversation } from '../models';
 
 	interface Props {
-		conversations: Conversation[];
+		conversations: CouncilConversation[];
 		currentConversationId?: string;
 		onSelect: (id: string) => void;
 		onNew: () => void;
@@ -29,6 +29,11 @@
 		if (str.length <= len) return str;
 		return str.substring(0, len) + '...';
 	}
+
+	function getTitle(conversation: CouncilConversation): string {
+		// Use query as title, truncated
+		return truncate(conversation.query || 'Untitled', 30);
+	}
 </script>
 
 <div class="flex h-full flex-col">
@@ -50,12 +55,12 @@
 						: ''}"
 					onclick={() => onSelect(conversation.id)}
 				>
-					<MessageSquare class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<MessageSquare class="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
 					<div class="min-w-0 flex-1">
 						<p class="truncate text-sm font-medium">
-							{truncate(conversation.title, 30)}
+							{getTitle(conversation)}
 						</p>
-						<div class="flex items-center gap-1 text-xs text-muted-foreground">
+						<div class="text-muted-foreground flex items-center gap-1 text-xs">
 							<Clock class="h-3 w-3" />
 							{formatDate(conversation.updatedAt)}
 						</div>

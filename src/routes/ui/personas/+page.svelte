@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
 	import { Plus, Edit, Trash2, Lock, ArrowLeft, Key, Loader2 } from 'lucide-svelte';
 	import { Badge } from '$lib/components/ui/badge';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import type { PersonaWithProvider } from '../../../models/index.js';
 
 	interface PageData {
@@ -18,6 +20,8 @@
 	let selectedSystemPersona = $state<PersonaWithProvider | null>(null);
 	let selectedProviderId = $state('');
 	let isUpdatingProvider = $state(false);
+	let showDeleteDialog = $state(false);
+	let pendingDeleteId = $state<string | null>(null);
 
 	let systemPersonas = $derived(data.personas.filter((p) => p.isSystem));
 	let userPersonas = $derived(data.personas.filter((p) => !p.isSystem));
@@ -64,10 +68,10 @@
 			if (response.ok) {
 				window.location.reload();
 			} else {
-				alert('Failed to update provider');
+				toast.error('Failed to update provider');
 			}
 		} catch (err) {
-			alert('Failed to update provider');
+			toast.error('Failed to update provider');
 			console.error(err);
 		} finally {
 			isUpdatingProvider = false;
@@ -80,19 +84,29 @@
 		selectedProviderId = '';
 	}
 
-	async function handleDelete(id: string) {
-		if (confirm('Are you sure you want to delete this persona?')) {
-			try {
-				const response = await fetch(`/api/MoLOS-LLM-Council/personas/${id}`, {
-					method: 'DELETE'
-				});
-				if (response.ok) {
-					window.location.reload();
-				}
-			} catch (err) {
-				alert('Failed to delete persona');
-				console.error(err);
+	function handleDeleteRequest(id: string) {
+		pendingDeleteId = id;
+		showDeleteDialog = true;
+	}
+
+	async function confirmDelete() {
+		if (!pendingDeleteId) return;
+
+		try {
+			const response = await fetch(`/api/MoLOS-LLM-Council/personas/${pendingDeleteId}`, {
+				method: 'DELETE'
+			});
+			if (response.ok) {
+				window.location.reload();
+			} else {
+				toast.error('Failed to delete persona');
 			}
+		} catch (err) {
+			toast.error('Failed to delete persona');
+			console.error(err);
+		} finally {
+			showDeleteDialog = false;
+			pendingDeleteId = null;
 		}
 	}
 </script>
@@ -283,7 +297,7 @@
 													variant="ghost"
 													size="sm"
 													class="text-destructive hover:bg-destructive/10"
-													onclick={() => handleDelete(persona.id)}
+													onclick={() => handleDeleteRequest(persona.id)}
 												>
 													<Trash2 class="h-3 w-3" />
 												</Button>
@@ -298,4 +312,24 @@
 			{/if}
 		</CardContent>
 	</Card>
+
+	<!-- Delete Confirmation Dialog -->
+	<Dialog.Root bind:open={showDeleteDialog}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete Persona?</Dialog.Title>
+				<Dialog.Description>
+					Are you sure you want to delete this persona? This action cannot be undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (showDeleteDialog = false)}>
+					Cancel
+				</Button>
+				<Button variant="destructive" onclick={confirmDelete}>
+					Delete
+				</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 </div>

@@ -52,6 +52,11 @@ export const councilUIState = writable({
 	lastLoaded: null as number | null
 });
 
+// Track if a load is in progress to prevent duplicate requests
+let isLoadingConversations = false;
+let isLoadingSettings = false;
+let hasLoadedSettings = false;
+
 // Derived: Check if council is complete
 export const isCouncilComplete = derived(
 	councilUIState,
@@ -70,6 +75,12 @@ export async function loadPersonas(): Promise<PersonaWithProvider[]> {
  * Load conversations
  */
 export async function loadConversations() {
+	// Prevent duplicate requests
+	if (isLoadingConversations) {
+		return;
+	}
+	isLoadingConversations = true;
+
 	councilUIState.update((s) => ({ ...s, loading: true, error: null }));
 
 	try {
@@ -80,6 +91,8 @@ export async function loadConversations() {
 		const message = err instanceof Error ? err.message : 'Failed to load conversations';
 		councilUIState.update((s) => ({ ...s, loading: false, error: message }));
 		throw err;
+	} finally {
+		isLoadingConversations = false;
 	}
 }
 
@@ -243,12 +256,21 @@ export async function deleteConversation(id: string) {
  * Load settings
  */
 export async function loadSettings() {
+	// Prevent duplicate requests - only load once per session
+	if (isLoadingSettings || hasLoadedSettings) {
+		return;
+	}
+	isLoadingSettings = true;
+
 	try {
 		const settings = await apiFetch<any>('/settings');
+		hasLoadedSettings = true;
 		return settings;
 	} catch (err) {
 		console.error('Failed to load settings:', err);
 		throw err;
+	} finally {
+		isLoadingSettings = false;
 	}
 }
 
