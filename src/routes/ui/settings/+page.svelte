@@ -4,9 +4,17 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card/index.js';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '$lib/components/ui/card/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
+	import * as Accordion from '$lib/components/ui/accordion/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
 	import {
 		Loader2,
 		Save,
@@ -15,20 +23,14 @@
 		Trash2,
 		Edit,
 		CheckCircle,
-		ArrowLeft
+		ArrowLeft,
+		X
 	} from 'lucide-svelte';
 	import {
 		settingsStore,
 		loadSettings,
 		updateSettings
 	} from '../../../stores/council.store.js';
-	import {
-		loadProviders,
-		createProvider,
-		updateProvider,
-		deleteProvider,
-		setDefaultProvider
-	} from '../../../stores/personas.store.js';
 	import type { AIProvider, ProviderType } from '../../../models/index.js';
 
 	const PROVIDER_TYPES = [
@@ -42,6 +44,7 @@
 	let isSaving = $state(false);
 	let isSavingProvider = $state(false);
 	let isDeleting = $state('');
+	let openAccordionItems = $state<string[]>([]);
 
 	let editingProvider = $state<AIProvider | null>(null);
 	let showCreateForm = $state(false);
@@ -65,8 +68,16 @@
 	let customStage2Prompt = $state('');
 	let customStage3Prompt = $state('');
 
+	async function loadProvidersData() {
+		const response = await fetch('/api/MoLOS-LLM-Council/providers');
+		if (response.ok) {
+			const data = await response.json();
+			providers = data.providers || [];
+		}
+	}
+
 	onMount(async () => {
-		await loadProviders();
+		await loadProvidersData();
 		const settings = await loadSettings();
 
 		if (settings) {
@@ -96,23 +107,30 @@
 	async function handleCreateProvider() {
 		isSavingProvider = true;
 		try {
-			await createProvider({
-				type: newProvider.type,
-				name: newProvider.name,
-				apiUrl: newProvider.apiUrl,
-				apiToken: newProvider.apiToken,
-				model: newProvider.model,
-				isDefault: false
+			const response = await fetch('/api/MoLOS-LLM-Council/providers', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					type: newProvider.type,
+					name: newProvider.name,
+					apiUrl: newProvider.apiUrl,
+					apiToken: newProvider.apiToken,
+					model: newProvider.model,
+					isDefault: false
+				})
 			});
-			await loadProviders();
-			showCreateForm = false;
-			newProvider = {
-				type: 'openrouter',
-				name: '',
-				apiUrl: '',
-				apiToken: '',
-				model: ''
-			};
+
+			if (response.ok) {
+				await loadProvidersData();
+				showCreateForm = false;
+				newProvider = {
+					type: 'openrouter',
+					name: '',
+					apiUrl: '',
+					apiToken: '',
+					model: ''
+				};
+			}
 		} catch (err) {
 			console.error('Failed to create provider:', err);
 		} finally {
@@ -122,8 +140,10 @@
 
 	async function handleSetDefault(id: string) {
 		try {
-			await setDefaultProvider(id);
-			await loadProviders();
+			await fetch(`/api/MoLOS-LLM-Council/providers/${id}`, {
+				method: 'POST'
+			});
+			await loadProvidersData();
 		} catch (err) {
 			console.error('Failed to set default provider:', err);
 		}
@@ -131,7 +151,14 @@
 
 	function handleEditProvider(provider: AIProvider) {
 		editingProvider = { ...provider };
-		showCreateForm = true;
+		newProvider = {
+			type: provider.type,
+			name: provider.name,
+			apiUrl: provider.apiUrl,
+			apiToken: provider.apiToken,
+			model: provider.model
+		};
+		openAccordionItems = [provider.id];
 	}
 
 	async function handleUpdateProvider() {
@@ -139,10 +166,30 @@
 
 		isSavingProvider = true;
 		try {
-			await updateProvider(editingProvider.id, editingProvider);
-			await loadProviders();
-			editingProvider = null;
-			showCreateForm = false;
+			const response = await fetch(`/api/MoLOS-LLM-Council/providers/${editingProvider.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					type: newProvider.type,
+					name: newProvider.name,
+					apiUrl: newProvider.apiUrl,
+					apiToken: newProvider.apiToken,
+					model: newProvider.model
+				})
+			});
+
+			if (response.ok) {
+				await loadProvidersData();
+				editingProvider = null;
+				openAccordionItems = [];
+				newProvider = {
+					type: 'openrouter',
+					name: '',
+					apiUrl: '',
+					apiToken: '',
+					model: ''
+				};
+			}
 		} catch (err) {
 			console.error('Failed to update provider:', err);
 		} finally {
@@ -150,13 +197,31 @@
 		}
 	}
 
+	function handleCancelEdit() {
+		editingProvider = null;
+		openAccordionItems = [];
+		newProvider = {
+			type: 'openrouter',
+			name: '',
+			apiUrl: '',
+			apiToken: '',
+			model: ''
+		};
+	}
+
 	async function handleDeleteProvider(id: string) {
 		if (!confirm('Are you sure you want to delete this provider?')) return;
 
 		isDeleting = id;
 		try {
-			await deleteProvider(id);
-			await loadProviders();
+			const response = await fetch(`/api/MoLOS-LLM-Council/providers/${id}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				await loadProvidersData();
+				openAccordionItems = openAccordionItems.filter((item) => item !== id);
+			}
 		} catch (err) {
 			console.error('Failed to delete provider:', err);
 		} finally {
@@ -181,6 +246,10 @@
 				newProvider.apiUrl = '';
 				break;
 		}
+	}
+
+	function getProviderLabel(type: ProviderType): string {
+		return PROVIDER_TYPES.find((t) => t.value === type)?.label || type;
 	}
 </script>
 
@@ -214,6 +283,11 @@
 								onclick={() => {
 									editingProvider = null;
 									showCreateForm = !showCreateForm;
+									if (showCreateForm) {
+										openAccordionItems = ['new'];
+									} else {
+										openAccordionItems = [];
+									}
 								}}
 							>
 								<Plus class="mr-1 h-4 w-4" />
@@ -225,168 +299,284 @@
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{#if showCreateForm}
-							<div class="space-y-4 p-4 border rounded-lg bg-muted/50">
-								<h3 class="mb-4 font-semibold">
-									{editingProvider ? 'Edit Provider' : 'Add New Provider'}
-								</h3>
-
-								<div class="space-y-2">
-									<Label for="providerType">Provider Type</Label>
-									<select
-										bind:value={newProvider.type}
-										onchange={(e) => handleProviderTypeChange((e.target as HTMLSelectElement).value as ProviderType)}
-										class="provider-select"
-									>
-										{#each PROVIDER_TYPES as type}
-											<option value={type.value}>{type.label}</option>
-										{/each}
-									</select>
-								</div>
-
-								<div class="space-y-2">
-									<Label for="providerName">Name</Label>
-									<Input
-										id="providerName"
-										bind:value={newProvider.name}
-										placeholder="e.g., OpenRouter Account"
-									/>
-								</div>
-
-								<div class="space-y-2">
-									<Label for="providerUrl">API URL</Label>
-									<Input
-										id="providerUrl"
-										bind:value={newProvider.apiUrl}
-										placeholder="https://api.example.com/v1"
-									/>
-								</div>
-
-								<div class="space-y-2">
-									<Label for="providerToken">API Token</Label>
-									<Input
-										id="providerToken"
-										type="password"
-										bind:value={newProvider.apiToken}
-										placeholder="sk-..."
-									/>
-								</div>
-
-								<div class="space-y-2">
-									<Label for="providerModel">Default Model</Label>
-									<Input
-										id="providerModel"
-										bind:value={newProvider.model}
-										placeholder="e.g., anthropic/claude-3.5-sonnet"
-									/>
-								</div>
-
-								<div class="flex gap-2 pt-2">
-									<Button
-										variant="outline"
-										onclick={() => {
-											editingProvider = null;
-											showCreateForm = false;
-											newProvider = {
-												type: 'openrouter',
-												name: '',
-												apiUrl: '',
-												apiToken: '',
-												model: ''
-											};
-										}}
-									>
-										Cancel
-									</Button>
-									<Button
-										onclick={editingProvider ? handleUpdateProvider : handleCreateProvider}
-										disabled={
-											isSavingProvider ||
-											!newProvider.name.trim() ||
-											!newProvider.apiUrl.trim() ||
-											!newProvider.model.trim()
-										}
-									>
-										{#if isSavingProvider}
-											<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-										{/if}
-										{editingProvider ? 'Update' : 'Create'} Provider
-									</Button>
-								</div>
-							</div>
-						{:else}
-							{#if providers.length === 0}
-								<div class="text-center py-8 text-muted-foreground">
-									<p>No providers configured yet.</p>
-									<p class="text-sm">Add a provider to start using the council.</p>
-								</div>
-							{:else}
-								<div class="space-y-3">
-									{#each providers as provider}
-										<div class="provider-card {provider.isDefault ? 'default' : ''}">
-											<div class="provider-header">
-												<div class="provider-info">
-													<span class="provider-type">{PROVIDER_TYPES.find(t => t.value === provider.type)?.label || provider.type}</span>
-													<h4 class="provider-name">{provider.name}</h4>
-												</div>
-												{#if provider.isDefault}
-													<span class="default-badge">
-														<CheckCircle class="h-4 w-4" />
-														Default
-													</span>
-												{/if}
-											</div>
-
-											<div class="provider-details">
-												<div class="detail-row">
-													<span class="detail-label">Model:</span>
-													<code class="detail-value">{provider.model}</code>
-												</div>
-												<div class="detail-row">
-													<span class="detail-label">URL:</span>
-													<code class="detail-value">{provider.apiUrl}</code>
-												</div>
-											</div>
-
-											<div class="provider-actions">
-												{#if !provider.isDefault}
-													<Button
-														variant="ghost"
-														size="sm"
-														onclick={() => handleSetDefault(provider.id)}
-														title="Set as default"
-													>
-														<CheckCircle class="h-4 w-4" />
-													</Button>
-												{/if}
-												<Button
-													variant="ghost"
-													size="sm"
-													onclick={() => handleEditProvider(provider)}
-													title="Edit provider"
+						<Accordion.Root
+							bind:value={openAccordionItems}
+							type="multiple"
+							class="w-full space-y-3"
+						>
+							{#if showCreateForm}
+								<Accordion.Item value="new" class="rounded-xl border">
+									<Accordion.Trigger class="px-4">
+										<div class="flex items-center gap-2">
+											<Plus class="h-4 w-4" />
+											<span>Add New Provider</span>
+										</div>
+									</Accordion.Trigger>
+									<Accordion.Content class="px-4 pb-4">
+										<div class="space-y-4 pt-2">
+											<div class="space-y-2">
+												<Label for="providerType">Provider Type</Label>
+												<select
+													id="providerType"
+													bind:value={newProvider.type}
+													onchange={(e) =>
+														handleProviderTypeChange(
+															(e.target as HTMLSelectElement).value as ProviderType
+														)}
+													class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
 												>
-													<Edit class="h-4 w-4" />
+													{#each PROVIDER_TYPES as type}
+														<option value={type.value}>{type.label}</option>
+													{/each}
+												</select>
+											</div>
+
+											<div class="space-y-2">
+												<Label for="providerName">Name *</Label>
+												<Input
+													id="providerName"
+													bind:value={newProvider.name}
+													placeholder="e.g., OpenRouter Account"
+												/>
+											</div>
+
+											<div class="space-y-2">
+												<Label for="providerUrl">API URL *</Label>
+												<Input
+													id="providerUrl"
+													bind:value={newProvider.apiUrl}
+													placeholder="https://api.example.com/v1"
+												/>
+											</div>
+
+											<div class="space-y-2">
+												<Label for="providerToken">API Token</Label>
+												<Input
+													id="providerToken"
+													type="password"
+													bind:value={newProvider.apiToken}
+													placeholder="sk-..."
+												/>
+											</div>
+
+											<div class="space-y-2">
+												<Label for="providerModel">Default Model *</Label>
+												<Input
+													id="providerModel"
+													bind:value={newProvider.model}
+													placeholder="e.g., anthropic/claude-3.5-sonnet"
+												/>
+											</div>
+
+											<div class="flex gap-2 pt-2">
+												<Button
+													variant="outline"
+													onclick={() => {
+														showCreateForm = false;
+														editingProvider = null;
+														newProvider = {
+															type: 'openrouter',
+															name: '',
+															apiUrl: '',
+															apiToken: '',
+															model: ''
+														};
+														openAccordionItems = [];
+													}}
+												>
+													<X class="mr-1 h-3 w-3" />
+													Cancel
 												</Button>
 												<Button
-													variant="ghost"
-													size="sm"
-													class="destructive"
-													onclick={() => handleDeleteProvider(provider.id)}
-													disabled={isDeleting === provider.id}
-													title="Delete provider"
+													onclick={handleCreateProvider}
+													disabled={
+														isSavingProvider ||
+														!newProvider.name.trim() ||
+														!newProvider.apiUrl.trim() ||
+														!newProvider.model.trim()
+													}
 												>
-													{#if isDeleting === provider.id}
-														<Loader2 class="h-4 w-4 animate-spin" />
-													{:else}
-														<Trash2 class="h-4 w-4" />
+													{#if isSavingProvider}
+														<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 													{/if}
+													Create Provider
 												</Button>
 											</div>
 										</div>
-									{/each}
-								</div>
+									</Accordion.Content>
+								</Accordion.Item>
 							{/if}
-						{/if}
+
+							{#if providers.length === 0}
+								<div class="text-center py-8 text-muted-foreground">
+									<Key class="mx-auto mb-2 h-12 w-12 opacity-50" />
+									<p>No providers configured yet.</p>
+									<p class="text-sm">Add a provider to start using council.</p>
+								</div>
+							{:else}
+								{#each providers as provider}
+									{@const isEditing = editingProvider?.id === provider.id}
+									{@const isDefault = provider.isDefault}
+
+									<Accordion.Item value={provider.id} class="rounded-xl border">
+										<Accordion.Trigger class="px-4">
+											<div class="flex items-center gap-3">
+												<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+													<Key class="h-4 w-4 text-primary" />
+												</div>
+												<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
+													<div class="flex items-center gap-2">
+														<span class="truncate text-sm font-semibold">
+															{provider.name}
+														</span>
+														{#if isDefault}
+															<Badge variant="default" class="text-xs">Default</Badge>
+														{/if}
+													</div>
+													<span class="text-xs text-muted-foreground">
+														{getProviderLabel(provider.type)} · {provider.model}
+													</span>
+												</div>
+											</div>
+										</Accordion.Trigger>
+
+										<Accordion.Content class="px-4 pb-4">
+											<div class="space-y-4 pt-2">
+												{#if isEditing}
+													<div class="space-y-3">
+														<div class="space-y-2">
+															<Label>Provider Type</Label>
+															<select
+																bind:value={newProvider.type}
+																onchange={(e) =>
+																	handleProviderTypeChange(
+																		(e.target as HTMLSelectElement).value as ProviderType
+																	)}
+																class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+															>
+																{#each PROVIDER_TYPES as type}
+																	<option value={type.value}>{type.label}</option>
+																{/each}
+															</select>
+														</div>
+
+														<div class="space-y-2">
+															<Label>Name *</Label>
+															<Input bind:value={newProvider.name} />
+														</div>
+
+														<div class="space-y-2">
+															<Label>API URL *</Label>
+															<Input bind:value={newProvider.apiUrl} />
+														</div>
+
+														<div class="space-y-2">
+															<Label>API Token</Label>
+															<Input
+																type="password"
+																bind:value={newProvider.apiToken}
+																placeholder="Leave unchanged"
+															/>
+														</div>
+
+														<div class="space-y-2">
+															<Label>Default Model *</Label>
+															<Input bind:value={newProvider.model} />
+														</div>
+
+														<div class="flex gap-2 pt-2">
+															<Button variant="outline" onclick={handleCancelEdit}>
+																<X class="mr-1 h-3 w-3" />
+																Cancel
+															</Button>
+															<Button
+																onclick={handleUpdateProvider}
+																disabled={
+																	isSavingProvider ||
+																	!newProvider.name.trim() ||
+																	!newProvider.apiUrl.trim() ||
+																	!newProvider.model.trim()
+																}
+															>
+																{#if isSavingProvider}
+																	<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+																{:else}
+																	<Save class="mr-2 h-4 w-4" />
+																{/if}
+																Save Changes
+															</Button>
+														</div>
+													</div>
+												{:else}
+													<div class="space-y-3">
+														<div class="grid grid-cols-2 gap-3">
+															<div>
+																<Label class="text-xs text-muted-foreground">
+																	Provider Type
+																</Label>
+																<div class="mt-1 font-medium">
+																	{getProviderLabel(provider.type)}
+																</div>
+															</div>
+															<div>
+																<Label class="text-xs text-muted-foreground">Model</Label>
+																<div class="mt-1 font-mono text-sm">
+																	{provider.model}
+																</div>
+															</div>
+														</div>
+
+														<div>
+															<Label class="text-xs text-muted-foreground">API URL</Label>
+															<div class="mt-1 font-mono text-sm">
+																{provider.apiUrl}
+															</div>
+														</div>
+
+														<div class="flex flex-wrap gap-2 pt-2">
+															{#if !isDefault}
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onclick={() => handleSetDefault(provider.id)}
+																>
+																	<CheckCircle class="mr-1 h-3 w-3" />
+																	Set Default
+																</Button>
+															{/if}
+
+															<Button
+																variant="outline"
+																size="sm"
+																onclick={() => handleEditProvider(provider)}
+															>
+																<Edit class="mr-1 h-3 w-3" />
+																Edit
+															</Button>
+
+															<Button
+																variant="ghost"
+																size="sm"
+																class="text-destructive hover:bg-destructive/10"
+																onclick={() => handleDeleteProvider(provider.id)}
+																disabled={isDeleting === provider.id}
+															>
+																{#if isDeleting === provider.id}
+																	<Loader2 class="h-3 w-3 animate-spin" />
+																{:else}
+																	<Trash2 class="h-3 w-3" />
+																{/if}
+																Delete
+															</Button>
+														</div>
+													</div>
+												{/if}
+											</div>
+										</Accordion.Content>
+									</Accordion.Item>
+								{/each}
+							{/if}
+						</Accordion.Root>
 					</CardContent>
 				</Card>
 			</div>
@@ -419,7 +609,7 @@
 					<CardHeader>
 						<CardTitle>Custom Prompts</CardTitle>
 						<CardDescription>
-							Customize the system prompts for each council stage. Leave empty to use defaults.
+							Customize system prompts for each council stage. Leave empty to use defaults.
 						</CardDescription>
 					</CardHeader>
 					<CardContent class="space-y-4">
@@ -478,108 +668,5 @@
 		width: 100%;
 		max-width: 100%;
 		padding: 0 1rem;
-	}
-
-	.provider-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		padding: 1rem;
-		border: 2px solid #e5e7eb;
-		border-radius: 0.5rem;
-		transition: all 0.2s;
-	}
-
-	.provider-card:hover {
-		border-color: #667eea;
-		box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-	}
-
-	.provider-card.default {
-		background: linear-gradient(135deg, #f0fdf4 0%, #dbeafe 100%);
-		border-color: #93c5fd;
-	}
-
-	.provider-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.provider-info {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.provider-type {
-		display: inline-block;
-		padding: 0.25rem 0.5rem;
-		background: #667eea;
-		color: white;
-		border-radius: 0.25rem;
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.provider-name {
-		font-size: 1rem;
-		font-weight: 600;
-		color: #1f2937;
-		margin: 0;
-	}
-
-	.default-badge {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 0.25rem 0.5rem;
-		background: #22c55e;
-		color: white;
-		border-radius: 0.25rem;
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.provider-details {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.detail-row {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.detail-label {
-		font-size: 0.75rem;
-		color: #6b7280;
-		min-width: 3rem;
-	}
-
-	.detail-value {
-		font-size: 0.75rem;
-		padding: 0.125rem 0.375rem;
-		background: #f3f4f6;
-		border-radius: 0.25rem;
-		color: #e11d48;
-	}
-
-	.provider-actions {
-		display: flex;
-		gap: 0.25rem;
-		margin-top: auto;
-	}
-
-	.provider-select {
-		width: 100%;
-		padding: 0.5rem;
-		border: 2px solid #e5e7eb;
-		border-radius: 0.375rem;
-		font-size: 0.875rem;
-		background: white;
 	}
 </style>

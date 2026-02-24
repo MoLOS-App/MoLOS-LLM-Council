@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
 	import { Plus, Edit, Trash2, Lock, ArrowLeft } from 'lucide-svelte';
-	import { loadPersonas } from '../../../stores/personas.store.js';
+	import { Badge } from '$lib/components/ui/badge';
 	import type { PersonaWithProvider } from '../../../models/index.js';
 
 	interface PageData {
@@ -18,6 +18,10 @@
 
 	function handleCreate() {
 		goto('/ui/MoLOS-LLM-Council/personas/create');
+	}
+
+	function handleEdit(id: string) {
+		goto(`/ui/MoLOS-LLM-Council/personas/${id}/edit`);
 	}
 
 	async function handleDelete(id: string) {
@@ -37,7 +41,7 @@
 	}
 </script>
 
-<div class="container mx-auto max-w-5xl p-4 md:p-6">
+<div class="container mx-auto max-w-6xl p-4 md:p-6">
 	<div class="mb-6">
 		<Button variant="ghost" size="sm" onclick={() => goto('/ui/MoLOS-LLM-Council')}>
 			<ArrowLeft class="mr-2 h-4 w-4" />
@@ -46,7 +50,10 @@
 	</div>
 
 	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Personas</h1>
+		<div>
+			<h1 class="text-2xl font-bold">Personas</h1>
+			<p class="text-sm text-muted-foreground">Manage your AI personas for the LLM Council</p>
+		</div>
 		<Button onclick={handleCreate}>
 			<Plus class="mr-2 h-4 w-4" />
 			Create Persona
@@ -54,29 +61,42 @@
 	</div>
 
 	{#if systemPersonas.length > 0}
-		<Card class="mb-6">
+		<Card class="mb-6 bg-muted/30">
 			<CardHeader>
 				<CardTitle class="flex items-center gap-2">
-					<Lock class="h-5 w-5" />
+					<Lock class="h-5 w-5 text-muted-foreground" />
 					System Personas
 				</CardTitle>
+				<CardDescription>Built-in personas that cannot be modified</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div class="persona-list">
+				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each systemPersonas as persona}
-						<div class="persona-item system-persona">
-							<div class="persona-avatar large">{persona.avatar}</div>
-							<div class="persona-details">
-								<h3 class="persona-name">{persona.name}</h3>
-								<p class="persona-description">{persona.description}</p>
-								<p class="persona-provider">
-									{persona.provider.name} - {persona.provider.model}
-								</p>
-							</div>
-							<div class="persona-actions">
-								<span class="system-badge">🔒 System</span>
-							</div>
-						</div>
+						<Card class="border-primary/20 bg-muted/50">
+							<CardContent class="p-4">
+								<div class="flex gap-3">
+									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-background text-2xl">
+										{persona.avatar}
+									</div>
+									<div class="flex min-w-0 flex-1 flex-col">
+										<div class="mb-1 flex items-center justify-between gap-2">
+											<h3 class="truncate text-sm font-semibold">{persona.name}</h3>
+											{#if persona.isPresident}
+												<Badge variant="secondary" class="text-xs">👑 Chairman</Badge>
+											{/if}
+										</div>
+										<p class="line-clamp-2 text-xs text-muted-foreground">
+											{persona.description}
+										</p>
+										<div class="mt-2 text-xs">
+											<span class="font-medium">{persona.provider.name}</span>
+											<span class="text-muted-foreground/70"> - </span>
+											<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+										</div>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 					{/each}
 				</div>
 			</CardContent>
@@ -86,125 +106,79 @@
 	<Card>
 		<CardHeader>
 			<CardTitle>My Personas</CardTitle>
+			<CardDescription>Custom personas you've created</CardDescription>
 		</CardHeader>
 		<CardContent>
 			{#if userPersonas.length === 0}
-				<div class="empty-state">
-					<p class="text-muted-foreground">No custom personas yet.</p>
+				<div class="flex flex-col items-center justify-center p-12 text-center">
+					<div class="mb-4 rounded-full bg-muted p-4">
+						<Plus class="h-8 w-8 text-muted-foreground" />
+					</div>
+					<h3 class="mb-2 text-lg font-semibold">No custom personas yet</h3>
+					<p class="mb-4 text-sm text-muted-foreground">
+						Create your first persona to customize the LLM Council experience
+					</p>
 					<Button variant="outline" onclick={handleCreate}>
 						<Plus class="mr-2 h-4 w-4" />
 						Create Your First Persona
 					</Button>
 				</div>
 			{:else}
-				<div class="persona-list">
+				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each userPersonas as persona}
-						<div class="persona-item">
-							<div class="persona-avatar">{persona.avatar}</div>
-							<div class="persona-details">
-								<h3 class="persona-name">{persona.name}</h3>
-								<p class="persona-description">{persona.description}</p>
-								<p class="persona-provider">
-									{persona.provider.name} - {persona.provider.model}
-								</p>
-							</div>
-							<div class="persona-actions">
-								<Button variant="ghost" size="sm" onclick={() => handleEdit(persona.id)}>
-									<Edit class="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="destructive"
-									onclick={() => handleDelete(persona.id)}
-								>
-									<Trash2 class="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
+						<Card class="group transition-all hover:shadow-md hover:border-primary/50">
+							<CardContent class="p-4">
+								<div class="flex gap-3">
+									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+										{persona.avatar}
+									</div>
+									<div class="flex min-w-0 flex-1 flex-col">
+										<div class="mb-1 flex items-start justify-between gap-2">
+											<div class="flex min-w-0 flex-col gap-1">
+												<div class="flex items-center gap-2">
+													<h3 class="truncate text-sm font-semibold">{persona.name}</h3>
+													{#if persona.isPresident}
+														<Badge variant="secondary" class="text-xs">👑 Chairman</Badge>
+													{/if}
+												</div>
+												<p class="line-clamp-2 text-xs text-muted-foreground">
+													{persona.description}
+												</p>
+											</div>
+										</div>
+										<div class="mt-auto">
+											<div class="mb-2 text-xs">
+												<span class="font-medium">{persona.provider.name}</span>
+												<span class="text-muted-foreground/70"> - </span>
+												<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+											</div>
+											<div class="flex gap-2">
+												<Button
+													variant="outline"
+													size="sm"
+													class="flex-1"
+													onclick={() => handleEdit(persona.id)}
+												>
+													<Edit class="mr-1 h-3 w-3" />
+													Edit
+												</Button>
+												<Button
+													variant="ghost"
+													size="sm"
+													class="text-destructive hover:bg-destructive/10"
+													onclick={() => handleDelete(persona.id)}
+												>
+													<Trash2 class="h-3 w-3" />
+												</Button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 					{/each}
 				</div>
 			{/if}
 		</CardContent>
 	</Card>
 </div>
-
-<style>
-	.persona-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.persona-item {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem;
-		border: 2px solid #e5e7eb;
-		border-radius: 0.75rem;
-		background: white;
-	}
-
-	.persona-item.system-persona {
-		background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-		border-color: #f59e0b;
-	}
-
-	.persona-avatar {
-		font-size: 2.5rem;
-		flex-shrink: 0;
-	}
-
-	.persona-avatar.large {
-		font-size: 3rem;
-	}
-
-	.persona-details {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.persona-name {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: #1f2937;
-		margin: 0 0 0.5rem 0;
-	}
-
-	.persona-description {
-		font-size: 0.875rem;
-		color: #6b7280;
-		margin: 0 0 0.5rem 0;
-		line-height: 1.4;
-	}
-
-	.persona-provider {
-		font-size: 0.75rem;
-		color: #9ca3af;
-		font-family: monospace;
-	}
-
-	.persona-actions {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.system-badge {
-		background: #f59e0b;
-		color: white;
-		padding: 0.25rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		padding: 3rem 0;
-		text-align: center;
-	}
-</style>

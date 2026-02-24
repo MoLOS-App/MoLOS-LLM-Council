@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { PersonaWithProvider } from '../../models';
-	import { Crown, CheckCircle2, Plus, Minus } from 'lucide-svelte';
+	import { Plus, Minus } from 'lucide-svelte';
+	import { Card, CardContent } from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
 
 	interface Props {
 		personas: PersonaWithProvider[];
@@ -17,205 +20,98 @@
 		return selectedIds.filter((id) => id === personaId).length;
 	};
 
-	function handlePersonaSelect(personaId: string) {
-		if (!editable) return;
+	const MAX_INSTANCES = 3;
+	const MAX_TOTAL_MEMBERS = 10;
 
+	const canAddMore = (personaId: string) => {
 		const count = getSelectionCount(personaId);
-		if (count < 3) {
-			onSelect(personaId);
-		}
-	}
+		const totalSelected = selectedIds.length;
+		return count < MAX_INSTANCES && totalSelected < MAX_TOTAL_MEMBERS;
+	};
 </script>
 
-<div class="persona-grid">
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 	{#each personas as persona}
 		{@const count = getSelectionCount(persona.id)}
 		{@const isSelected = count > 0}
+		{@const canAdd = canAddMore(persona.id)}
 
-		<div class="persona-card {isSelected ? 'selected' : ''}">
-			<div class="persona-avatar">{persona.avatar}</div>
-			<div class="persona-info">
-				<div class="persona-header">
-					<span class="persona-name">{persona.name}</span>
-					{#if persona.id === presidentId}
-						<span class="president-badge">👑 Chairman</span>
-					{/if}
-				</div>
-				<p class="persona-description">{persona.description}</p>
-				<div class="persona-provider">
-					<span class="provider-name">{persona.provider.name}</span>
-					<span class="model-name">{persona.provider.model}</span>
-				</div>
-			</div>
+		<Card
+			class="group relative overflow-hidden transition-all hover:shadow-md {isSelected
+				? 'border-primary bg-primary/5'
+				: 'border-border hover:border-primary/50'}"
+		>
+			<CardContent class="p-5">
+				<div class="flex gap-3">
+					<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+						{persona.avatar}
+					</div>
 
-			{#if isSelected}
-				<div class="selection-controls">
-					<div class="count-badge">{count}x</div>
-					<button class="remove-btn" on:click|stopPropagation={() => onRemove(persona.id)} disabled={!editable}>
-						<Minus size={16} />
-					</button>
+					<div class="flex min-w-0 flex-1 flex-col">
+						<div class="mb-2 flex items-start justify-between gap-2">
+							<div class="flex min-w-0 items-center gap-2">
+								<h3 class="truncate text-sm font-semibold">{persona.name}</h3>
+								{#if persona.id === presidentId}
+									<Badge variant="secondary" class="shrink-0 text-xs whitespace-nowrap">
+										👑 Chairman
+									</Badge>
+								{/if}
+							</div>
+
+							{#if editable}
+								{#if isSelected}
+									<div class="flex items-center gap-1.5 shrink-0">
+										<Button
+											variant="outline"
+											size="icon"
+											class="h-7 w-7 border-primary/50 bg-primary/10 hover:bg-primary/20"
+											disabled={!canAdd || !editable}
+											onclick={() => onSelect(persona.id)}
+										>
+											<Plus class="h-3.5 w-3.5" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											class="h-7 w-7 text-destructive hover:bg-destructive/10"
+											onclick={() => onRemove(persona.id)}
+											disabled={!editable}
+										>
+											<Minus class="h-3.5 w-3.5" />
+										</Button>
+									</div>
+								{:else}
+									<Button
+										variant="ghost"
+										size="icon"
+										class="h-8 w-8 shrink-0 rounded-full border hover:bg-primary/10"
+										disabled={!editable}
+										onclick={() => onSelect(persona.id)}
+									>
+										<Plus class="h-4 w-4" />
+									</Button>
+								{/if}
+							{/if}
+						</div>
+
+						<p class="mb-3 line-clamp-2 text-xs text-muted-foreground">
+							{persona.description}
+						</p>
+
+						<div class="mb-2 text-xs">
+							<span class="font-medium">{persona.provider.name}</span>
+							<span class="text-muted-foreground/70"> - </span>
+							<span class="font-mono text-muted-foreground/70">{persona.provider.model}</span>
+						</div>
+
+						{#if isSelected}
+							<Badge variant="default" class="w-fit shrink-0">
+								{count}x selected
+							</Badge>
+						{/if}
+					</div>
 				</div>
-			{:else}
-				<button
-					class="add-btn"
-					on:click|stopPropagation={() => handlePersonaSelect(persona.id)}
-					disabled={!editable}
-				>
-					<Plus size={20} />
-				</button>
-			{/if}
-		</div>
+			</CardContent>
+		</Card>
 	{/each}
 </div>
-
-<style>
-	.persona-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: 1rem;
-	}
-
-	.persona-card {
-		display: flex;
-		align-items: flex-start;
-		gap: 1rem;
-		padding: 1.25rem;
-		background: white;
-		border: 2px solid #e5e7eb;
-		border-radius: 0.75rem;
-		cursor: pointer;
-		transition: all 0.2s;
-		position: relative;
-		text-align: left;
-	}
-
-	.persona-card:hover:not(:disabled) {
-		border-color: #667eea;
-		box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-	}
-
-	.persona-card.selected {
-		border-color: #667eea;
-		background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
-	}
-
-	.persona-avatar {
-		font-size: 2.5rem;
-		flex-shrink: 0;
-	}
-
-	.persona-info {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.persona-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.persona-name {
-		font-weight: 600;
-		color: #1f2937;
-	}
-
-	.president-badge {
-		display: flex;
-		align-items: center;
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-		color: white;
-		padding: 0.25rem 0.5rem;
-		border-radius: 0.25rem;
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.persona-description {
-		font-size: 0.875rem;
-		color: #6b7280;
-		margin: 0 0 0.75rem 0;
-		line-height: 1.4;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.persona-provider {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		font-size: 0.75rem;
-		color: #9ca3af;
-	}
-
-	.provider-name {
-		font-weight: 500;
-	}
-
-	.model-name {
-		font-family: monospace;
-		opacity: 0.8;
-	}
-
-	.selection-controls {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.count-badge {
-		background: #667eea;
-		color: white;
-		padding: 0.25rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.75rem;
-		font-weight: 600;
-	}
-
-	.add-btn {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		width: 32px;
-		height: 32px;
-		border-radius: 50%;
-		border: 2px solid #e5e7eb;
-		background: white;
-		color: #667eea;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: all 0.2s;
-	}
-
-	.add-btn:hover:not(:disabled) {
-		background: #667eea;
-		color: white;
-		border-color: #667eea;
-	}
-
-	.remove-btn {
-		width: 24px;
-		height: 24px;
-		border-radius: 50%;
-		border: none;
-		background: #ef4444;
-		color: white;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: opacity 0.2s;
-	}
-
-	.remove-btn:hover:not(:disabled) {
-		opacity: 0.8;
-	}
-</style>

@@ -82,8 +82,8 @@ export class CouncilOrchestrator {
 				models
 			};
 
-			// Run all models in parallel
-			const stage1Promises = models.map(async (modelId) => {
+			// Run all models - stream each and yield events
+			for (const modelId of models) {
 				const prompt = buildStage1Prompt(query, this.config.customPrompts?.stage1);
 
 				const stream = this.client.chatStream({
@@ -94,6 +94,7 @@ export class CouncilOrchestrator {
 
 				let content = '';
 
+				// Stream text deltas
 				for await (const delta of stream) {
 					content += delta;
 					yield {
@@ -104,20 +105,13 @@ export class CouncilOrchestrator {
 					};
 				}
 
-				return { modelId, content };
-			});
-
-			// Collect stage 1 results
-			for (const promise of stage1Promises) {
-				const asyncGen = await promise;
-				// Re-execute to get the generator behavior
-				const result = await this.executeStage1Model(query, asyncGen.modelId);
-				stage1Responses.push(result);
+				// Yield complete event and store result
+				stage1Responses.push({ modelId, content });
 
 				yield {
 					type: SSEEventType.MODEL_RESPONSE_COMPLETE,
-					modelId: result.modelId,
-					fullContent: result.content,
+					modelId,
+					fullContent: content,
 					stage: 'stage_1' as CouncilStage
 				};
 			}

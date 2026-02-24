@@ -1,27 +1,36 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
-	const userId = 'user';
-
 	try {
-		const response = await fetch(`/api/MoLOS-LLM-Council/personas/${params.id}`);
+		const [personaResponse, providersResponse] = await Promise.all([
+			fetch('/api/MoLOS-LLM-Council/personas/' + params.id),
+			fetch('/api/MoLOS-LLM-Council/providers')
+		]);
 
-		if (!response.ok) {
-			if (response.status === 404) {
+		if (!personaResponse.ok) {
+			if (personaResponse.status === 404) {
 				throw error(404, 'Persona not found');
 			}
-			throw error(response.status, 'Failed to load persona');
+			throw error(personaResponse.status, 'Failed to load persona');
 		}
 
-		const data = await response.json();
+		const personaData = await personaResponse.json();
 
-		if (data.persona.isSystem) {
+		if (personaData.persona.isSystem) {
 			throw error(400, 'Cannot edit system personas');
 		}
 
-		return data as PageData;
+		let providers = [];
+		if (providersResponse.ok) {
+			const providersData = await providersResponse.json();
+			providers = providersData.providers || [];
+		}
+
+		return {
+			persona: personaData.persona,
+			providers
+		};
 	} catch (err) {
 		if (err instanceof Error && err.message === 'Persona not found') {
 			throw err;
@@ -29,7 +38,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		console.error('Failed to load persona:', err);
 		return {
 			persona: null as any,
-			providers: [] as any
+			providers: []
 		};
 	}
 };
