@@ -94,12 +94,12 @@
 		return colors[rank] || 'bg-gradient-to-br from-gray-400 to-gray-500 shadow-gray-500/30';
 	}
 
-	// Bar color based on position - green for best, gradient to blue
-	function getBarGradient(index: number, total: number): string {
-		if (index === 0) return 'from-emerald-500 to-teal-500';
-		if (index === 1) return 'from-cyan-500 to-blue-500';
-		if (index === 2) return 'from-blue-500 to-indigo-500';
-		return 'from-indigo-500 to-violet-500';
+	// Bar color based on position - using theme colors
+	function getBarGradient(index: number): string {
+		if (index === 0) return 'from-primary to-primary/70';
+		if (index === 1) return 'from-primary/80 to-primary/50';
+		if (index === 2) return 'from-primary/60 to-primary/40';
+		return 'from-primary/40 to-primary/20';
 	}
 
 	// Text color for score label based on bar width
@@ -159,8 +159,7 @@
 						<div class="h-8 overflow-hidden rounded-lg bg-muted/50">
 							<div
 								class="h-full rounded-lg bg-gradient-to-r shadow-lg transition-all duration-500 {getBarGradient(
-									i,
-									rankingData().length
+									i
 								)}"
 								style="width: {item.score}%"
 							></div>
