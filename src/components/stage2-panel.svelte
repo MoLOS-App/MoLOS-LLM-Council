@@ -6,12 +6,12 @@
 
 	interface Props {
 		rankings: Array<{ reviewerModelId: string; rankings: ModelRanking[] }>;
-		models: string[];
+		personas: any[];
 		isActive: boolean;
 		isComplete: boolean;
 	}
 
-	let { rankings, models, isActive, isComplete }: Props = $props();
+	let { rankings, personas, isActive, isComplete }: Props = $props();
 
 	function getModelName(modelId: string): string {
 		const parts = modelId.split('/');

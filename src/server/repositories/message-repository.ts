@@ -1,11 +1,6 @@
 import { eq, and, asc, like, desc } from 'drizzle-orm';
 import { councilMessages } from '../database/schema';
-import type {
-	Message,
-	CouncilStage,
-	ModelRanking,
-	CreateMessageInput
-} from '../../models';
+import type { CouncilMessage, PersonaConversationStage } from '../../models';
 import { db as defaultDb } from '$lib/server/db';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
@@ -16,23 +11,18 @@ export class MessageRepository {
 		this.db = (db as BetterSQLite3Database<any>) || defaultDb;
 	}
 
-	private mapToMessage(row: Record<string, unknown>): Message {
+	private mapToMessage(row: Record<string, unknown>): CouncilMessage {
 		return {
 			...row,
-			rankings: (row.rankings as ModelRanking[]) || undefined,
-			metadata: (row.metadata as Record<string, unknown>) || undefined
-		} as Message;
+			rankings: (row.rankings as string) ? JSON.parse(row.rankings as string) : null
+		} as CouncilMessage;
 	}
 
 	async getByConversationId(
 		conversationId: string,
-		userId: string,
-		stage?: CouncilStage
-	): Promise<Message[]> {
-		const conditions = [
-			eq(councilMessages.conversationId, conversationId),
-			eq(councilMessages.userId, userId)
-		];
+		stage?: PersonaConversationStage
+	): Promise<CouncilMessage[]> {
+		const conditions = [eq(councilMessages.conversationId, conversationId)];
 
 		if (stage) {
 			conditions.push(eq(councilMessages.stage, stage));
@@ -47,60 +37,30 @@ export class MessageRepository {
 		return result.map((row) => this.mapToMessage(row));
 	}
 
-	async getById(id: string, userId: string): Promise<Message | null> {
+	async getById(id: string): Promise<CouncilMessage | null> {
 		const result = await this.db
 			.select()
 			.from(councilMessages)
-			.where(and(eq(councilMessages.id, id), eq(councilMessages.userId, userId)))
+			.where(eq(councilMessages.id, id))
 			.limit(1);
 
 		return result[0] ? this.mapToMessage(result[0]) : null;
 	}
 
-	async create(input: CreateMessageInput): Promise<Message> {
+	async create(input: Partial<CouncilMessage> & { conversationId: string; role: 'user' | 'assistant'; content: string; stage: PersonaConversationStage }): Promise<CouncilMessage> {
 		const result = await this.db
 			.insert(councilMessages)
 			.values({
 				conversationId: input.conversationId,
-				userId: input.userId,
+				personaId: input.personaId || null,
+				stage: input.stage,
 				role: input.role,
 				content: input.content,
-				modelId: input.modelId,
-				stage: input.stage,
-				rankings: input.rankings,
-				metadata: input.metadata
+				rankings: input.rankings ? JSON.stringify(input.rankings) : null
 			})
 			.returning();
 
 		return this.mapToMessage(result[0] as unknown as Record<string, unknown>);
-	}
-
-	async updateContent(
-		id: string,
-		userId: string,
-		content: string
-	): Promise<Message | null> {
-		const result = await this.db
-			.update(councilMessages)
-			.set({ content })
-			.where(and(eq(councilMessages.id, id), eq(councilMessages.userId, userId)))
-			.returning();
-
-		return result[0] ? this.mapToMessage(result[0] as unknown as Record<string, unknown>) : null;
-	}
-
-	async updateRankings(
-		id: string,
-		userId: string,
-		rankings: ModelRanking[]
-	): Promise<Message | null> {
-		const result = await this.db
-			.update(councilMessages)
-			.set({ rankings })
-			.where(and(eq(councilMessages.id, id), eq(councilMessages.userId, userId)))
-			.returning();
-
-		return result[0] ? this.mapToMessage(result[0] as unknown as Record<string, unknown>) : null;
 	}
 
 	async deleteByConversationId(conversationId: string): Promise<void> {
@@ -109,27 +69,11 @@ export class MessageRepository {
 			.where(eq(councilMessages.conversationId, conversationId));
 	}
 
-	async delete(id: string, userId: string): Promise<boolean> {
+	async delete(id: string): Promise<boolean> {
 		const result = await this.db
 			.delete(councilMessages)
-			.where(and(eq(councilMessages.id, id), eq(councilMessages.userId, userId)));
+			.where(eq(councilMessages.id, id));
 
 		return result.changes > 0;
-	}
-
-	async searchByUserId(
-		userId: string,
-		query: string,
-		limit: number = 20
-	): Promise<Message[]> {
-		const term = `%${query}%`;
-		const result = await this.db
-			.select()
-			.from(councilMessages)
-			.where(and(eq(councilMessages.userId, userId), like(councilMessages.content, term)))
-			.orderBy(desc(councilMessages.createdAt))
-			.limit(limit);
-
-		return result.map((row) => this.mapToMessage(row));
 	}
 }

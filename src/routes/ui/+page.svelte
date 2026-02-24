@@ -9,22 +9,19 @@
 	import {
 		Send,
 		Loader2,
-		Settings,
 		Users,
 		Scale,
 		Sparkles,
-		AlertCircle
+		Settings
 	} from 'lucide-svelte';
 
 	import {
 		councilUIState,
-		settingsStore,
 		stage1ResponsesStore,
 		stage2RankingsStore,
 		stage3SynthesisStore,
 		currentConversationStore,
-		startCouncil,
-		loadSettings
+		startCouncil
 	} from '../../stores/council.store.js';
 	import { Stage1Panel, Stage2Panel, Stage3Panel, PersonaGrid } from '../../components/index.js';
 	import type { PersonaWithProvider } from '../../models/index.js';
@@ -70,7 +67,7 @@
 
 		activeTab = 'stage1';
 
-		await startCouncil(query.trim(), selectedPersonaIds, presidentPersonaId);
+		await startCouncil(query.trim(), selectedPersonaIds, presidentPersonaId ?? undefined);
 	}
 
 	function handlePersonaSelect(personaId: string) {
@@ -99,24 +96,6 @@
 			Get diverse AI perspectives through a 3-stage consultation process
 		</p>
 	</div>
-
-	{#if !($settingsStore?.hasApiKey ?? false)}
-		<Card class="mb-6 border-amber-500/50 bg-amber-500/10">
-			<CardContent class="flex items-center gap-3 p-4">
-				<AlertCircle class="h-5 w-5 text-amber-500" />
-				<div>
-					<p class="font-medium">API Key Required</p>
-					<p class="text-sm text-muted-foreground">
-						Please configure your OpenRouter API key in
-						<a href="/ui/MoLOS-LLM-Council/settings" class="text-primary underline">
-							Settings</a
-						>
-						to use the council.
-					</p>
-				</div>
-			</CardContent>
-		</Card>
-	{/if}
 
 	<div>
 	<!-- Input Section -->
@@ -228,8 +207,7 @@
 			<TabsContent value="stage3" class="mt-4">
 				<Stage3Panel
 					content={$stage3SynthesisStore}
-					presidentPersonaId={null}
-					personas={[]}
+					synthesizerModel={undefined}
 					isActive={currentStage === 'stage_3'}
 					isComplete={currentStage === 'complete'}
 				/>

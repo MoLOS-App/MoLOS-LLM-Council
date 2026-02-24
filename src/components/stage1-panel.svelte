@@ -4,12 +4,12 @@
 
 	interface Props {
 		responses: Map<string, string>;
-		models: string[];
+		personas: any[];
 		isActive: boolean;
 		isComplete: boolean;
 	}
 
-	let { responses, models, isActive, isComplete }: Props = $props();
+	let { responses, personas, isActive, isComplete }: Props = $props();
 
 	function getModelName(modelId: string): string {
 		const parts = modelId.split('/');
@@ -20,10 +20,10 @@
 	}
 
 	const responseList = $derived(() => {
-		return models.map((modelId) => ({
+		return Array.from(responses.entries()).map(([modelId, content]) => ({
 			modelId,
 			modelName: getModelName(modelId),
-			content: responses.get(modelId) || ''
+			content
 		}));
 	});
 </script>

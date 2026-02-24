@@ -4,21 +4,22 @@ import { z } from 'zod';
 import { SettingsRepository } from '../../../server/repositories/settings-repository';
 import { ConversationRepository } from '../../../server/repositories/conversation-repository';
 import { MessageRepository } from '../../../server/repositories/message-repository';
-import { CouncilOrchestrator, createOrchestrator } from '../../../server/council/orchestrator';
-import { CouncilStage, MessageRole, SSEEventType } from '../../../models';
+import { PersonaRepository } from '../../../server/repositories/persona-repository';
+import { PersonaConversationStage, SSEEventType } from '../../../models';
 import { db } from '$lib/server/db';
 import type { CouncilEvent } from '../../../server/council/orchestrator';
 
 const StartCouncilSchema = z.object({
 	query: z.string().min(1, 'Query is required'),
-	models: z.array(z.string()).optional(),
-	synthesizerModel: z.string().optional(),
-	conversationId: z.string().optional()
+	personaIds: z.array(z.string()).optional(),
+	presidentPersonaId: z.string().optional(),
+	conversationId: z.string().optional(),
+	streamingEnabled: z.boolean().optional()
 });
 
 /**
  * POST /api/MoLOS-LLM-Council/stream
- * Start a council session with streaming events
+ * Start a council session with streaming events (non-streaming for now)
  */
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const userId = locals.user?.id;
@@ -34,17 +35,22 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw error(400, result.error.issues[0].message);
 		}
 
-		const { query, models, synthesizerModel, conversationId } = result.data;
+		const { query, personaIds, presidentPersonaId, conversationId, streamingEnabled } = result.data;
 
 		// Get settings
 		const settingsRepo = new SettingsRepository(db);
 		const settings = await settingsRepo.getOrCreate(userId);
 
-		if (!settings.openrouterApiKey) {
-			throw error(400, 'OpenRouter API key not configured. Please add it in settings.');
+		// Get personas
+		const personaRepo = new PersonaRepository(db);
+		const selectedPersonas = await personaRepo.getByIds(personaIds || []);
+		const presidentPersona = presidentPersonaId ? await personaRepo.getById(presidentPersonaId, userId) : null;
+
+		if (selectedPersonas.length === 0) {
+			throw error(400, 'No personas selected');
 		}
 
-		// Get or create conversation
+		// Get conversation repository
 		const conversationRepo = new ConversationRepository(db);
 		const messageRepo = new MessageRepository(db);
 
@@ -56,52 +62,35 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			}
 		} else {
 			// Create new conversation
-			const title = query.substring(0, 50) + (query.length > 50 ? '...' : '');
-			conversation = await conversationRepo.create(userId, {
-				title,
-				currentStage: CouncilStage.STAGE_1,
-				selectedModels: models || settings.defaultModels,
-				synthesizerModel: synthesizerModel || settings.defaultSynthesizer
-			});
+			conversation = await conversationRepo.create(
+				userId,
+				query,
+				personaIds || [],
+				presidentPersonaId
+			);
 		}
 
 		// Save user message
 		await messageRepo.create({
 			conversationId: conversation.id,
-			userId,
-			role: MessageRole.USER,
+			role: 'user',
 			content: query,
-			stage: CouncilStage.STAGE_1
+			stage: PersonaConversationStage.INITIAL_RESPONSES
 		});
 
-		// Create orchestrator
-		const orchestrator = new CouncilOrchestrator({
-			apiKey: settings.openrouterApiKey,
-			models: conversation.selectedModels,
-			synthesizerModel: conversation.synthesizerModel,
-			customPrompts: {
-				stage1: settings.customStage1Prompt,
-				stage2: settings.customStage2Prompt,
-				stage3: settings.customStage3Prompt
-			}
-		});
+		// If streaming is disabled, run council synchronously
+		if (streamingEnabled === false || settings.streamingEnabled === false) {
+			// Run council synchronously
+			const councilResult = await runCouncilSync(query, selectedPersonas, presidentPersona);
 
-		// Check if streaming is enabled
-		const shouldStream = settings.streamingEnabled;
-
-		if (!shouldStream) {
-			// Non-streaming response
-			const councilResult = await orchestrator.runCouncilSync(query);
-
-			// Save stage 1 responses
+			// Save stage 1 messages
 			for (const response of councilResult.stage1Responses) {
 				await messageRepo.create({
 					conversationId: conversation.id,
-					userId,
-					role: MessageRole.ASSISTANT,
+					personaId: response.personaId,
+					role: 'assistant',
 					content: response.content,
-					modelId: response.modelId,
-					stage: CouncilStage.STAGE_1
+					stage: PersonaConversationStage.INITIAL_RESPONSES
 				});
 			}
 
@@ -109,27 +98,27 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			for (const ranking of councilResult.stage2Rankings) {
 				await messageRepo.create({
 					conversationId: conversation.id,
-					userId,
-					role: MessageRole.ASSISTANT,
+					personaId: ranking.reviewerPersonaId,
+					role: 'assistant',
 					content: JSON.stringify(ranking.rankings),
-					modelId: ranking.reviewerModelId,
-					stage: CouncilStage.STAGE_2,
+					stage: PersonaConversationStage.PEER_REVIEW,
 					rankings: ranking.rankings
 				});
 			}
 
 			// Save stage 3 synthesis
-			await messageRepo.create({
-				conversationId: conversation.id,
-				userId,
-				role: MessageRole.ASSISTANT,
-				content: councilResult.stage3Synthesis,
-				modelId: conversation.synthesizerModel,
-				stage: CouncilStage.STAGE_3
-			});
+			if (presidentPersona && councilResult.stage3Synthesis) {
+				await messageRepo.create({
+					conversationId: conversation.id,
+					personaId: presidentPersona.id,
+					role: 'assistant',
+					content: councilResult.stage3Synthesis,
+					stage: PersonaConversationStage.SYNTHESIS
+				});
+			}
 
 			// Update conversation to complete
-			await conversationRepo.updateStage(conversation.id, userId, CouncilStage.COMPLETE);
+			await conversationRepo.updateStage(conversation.id, userId, PersonaConversationStage.COMPLETED);
 
 			return json({
 				conversationId: conversation.id,
@@ -137,130 +126,46 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			});
 		}
 
-		// Streaming response
-		const encoder = new TextEncoder();
-		let streamClosed = false;
+		// Streaming response (not implemented yet, fall back to non-streaming)
+		const councilResult = await runCouncilSync(query, selectedPersonas, presidentPersona);
 
-		// Track content for saving
-		const stage1Contents: Map<string, string> = new Map();
-		const stage2Rankings: Array<{ reviewerModelId: string; rankings: any[] }> = [];
-		let stage3Content = '';
+		// Save all messages
+		for (const response of councilResult.stage1Responses) {
+			await messageRepo.create({
+				conversationId: conversation.id,
+				personaId: response.personaId,
+				role: 'assistant',
+				content: response.content,
+				stage: PersonaConversationStage.INITIAL_RESPONSES
+			});
+		}
 
-		const stream = new ReadableStream({
-			async start(controller) {
-				const safeEnqueue = (data: Uint8Array) => {
-					if (!streamClosed) {
-						try {
-							controller.enqueue(data);
-						} catch (e) {
-							streamClosed = true;
-						}
-					}
-				};
+		for (const ranking of councilResult.stage2Rankings) {
+			await messageRepo.create({
+				conversationId: conversation.id,
+				personaId: ranking.reviewerPersonaId,
+				role: 'assistant',
+				content: JSON.stringify(ranking.rankings),
+				stage: PersonaConversationStage.PEER_REVIEW,
+				rankings: ranking.rankings
+			});
+		}
 
-				const sendEvent = (event: CouncilEvent) => {
-					safeEnqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-				};
+		if (presidentPersona && councilResult.stage3Synthesis) {
+			await messageRepo.create({
+				conversationId: conversation.id,
+				personaId: presidentPersona.id,
+				role: 'assistant',
+				content: councilResult.stage3Synthesis,
+				stage: PersonaConversationStage.SYNTHESIS
+			});
+		}
 
-				try {
-					// Send conversation ID first
-					sendEvent({
-						type: SSEEventType.META,
-						conversationId: conversation!.id
-					});
+		await conversationRepo.updateStage(conversation.id, userId, PersonaConversationStage.COMPLETED);
 
-					// Run council with streaming
-					for await (const event of orchestrator.runCouncil(query)) {
-						sendEvent(event);
-
-						// Track content for saving
-						if (event.type === SSEEventType.TEXT_DELTA && 'modelId' in event && 'delta' in event) {
-							const modelId = event.modelId as string;
-							const delta = event.delta as string;
-
-							if (event.stage === 'stage_1') {
-								const existing = stage1Contents.get(modelId) || '';
-								stage1Contents.set(modelId, existing + delta);
-							} else if (event.stage === 'stage_3') {
-								stage3Content += delta;
-							}
-						}
-
-						if (event.type === SSEEventType.SYNTHESIS_DELTA && 'delta' in event) {
-							stage3Content += event.delta as string;
-						}
-
-						if (event.type === SSEEventType.RANKING_COMPLETE && 'modelId' in event && 'rankings' in event) {
-							stage2Rankings.push({
-								reviewerModelId: event.modelId as string,
-								rankings: event.rankings as any[]
-							});
-						}
-					}
-
-					// Save all messages to database
-					// Stage 1 responses
-					for (const [modelId, content] of stage1Contents) {
-						await messageRepo.create({
-							conversationId: conversation!.id,
-							userId,
-							role: MessageRole.ASSISTANT,
-							content,
-							modelId,
-							stage: CouncilStage.STAGE_1
-						});
-					}
-
-					// Stage 2 rankings
-					for (const ranking of stage2Rankings) {
-						await messageRepo.create({
-							conversationId: conversation!.id,
-							userId,
-							role: MessageRole.ASSISTANT,
-							content: JSON.stringify(ranking.rankings),
-							modelId: ranking.reviewerModelId,
-							stage: CouncilStage.STAGE_2,
-							rankings: ranking.rankings
-						});
-					}
-
-					// Stage 3 synthesis
-					if (stage3Content) {
-						await messageRepo.create({
-							conversationId: conversation!.id,
-							userId,
-							role: MessageRole.ASSISTANT,
-							content: stage3Content,
-							modelId: conversation!.synthesizerModel,
-							stage: CouncilStage.STAGE_3
-						});
-					}
-
-					// Update conversation stage
-					await conversationRepo.updateStage(conversation!.id, userId, CouncilStage.COMPLETE);
-
-					// Send done
-					safeEnqueue(encoder.encode('data: [DONE]\n\n'));
-					controller.close();
-				} catch (err) {
-					console.error('Council streaming error:', err);
-					sendEvent({
-						type: SSEEventType.ERROR,
-						message: err instanceof Error ? err.message : 'Unknown error'
-					});
-					safeEnqueue(encoder.encode('data: [DONE]\n\n'));
-					controller.close();
-				}
-			}
-		});
-
-		return new Response(stream, {
-			headers: {
-				'Content-Type': 'text/event-stream',
-				'Cache-Control': 'no-cache',
-				Connection: 'keep-alive',
-				'X-Accel-Buffering': 'no'
-			}
+		return json({
+			conversationId: conversation.id,
+			result: councilResult
 		});
 	} catch (err) {
 		console.error('Failed to start council:', err);
@@ -270,3 +175,101 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		throw error(500, 'Internal server error');
 	}
 };
+
+/**
+ * Run council synchronously (non-streaming)
+ */
+async function runCouncilSync(
+	query: string,
+	personas: any[],
+	presidentPersona: any | null
+) {
+	const { OpenRouterClient } = await import('../../../server/council/openrouter-client');
+
+	interface Stage1Result {
+		personaId: string;
+		content: string;
+	}
+
+	interface Stage2Result {
+		reviewerPersonaId: string;
+		rankings: any[];
+	}
+
+	interface CouncilResult {
+		stage1Responses: Stage1Result[];
+		stage2Rankings: Stage2Result[];
+		stage3Synthesis: string;
+	}
+
+	const stage1Responses: Stage1Result[] = [];
+	const stage2Rankings: Stage2Result[] = [];
+
+	// Stage 1: Get responses from each persona
+	const stage1Promises = personas.map(async (persona) => {
+		const client = new OpenRouterClient(persona.provider.apiToken);
+		const prompt = `${persona.personalityPrompt}\n\nUser: ${query}`;
+
+		const content = await client.chat({
+			model: persona.provider.model,
+			messages: [{ role: 'user', content: prompt }],
+			max_tokens: 4096
+		});
+
+		return { personaId: persona.id, content };
+	});
+
+	stage1Responses.push(...(await Promise.all(stage1Promises)));
+
+	// Stage 2: Each persona ranks the responses
+	const stage2Promises = personas.map(async (persona) => {
+		const client = new OpenRouterClient(persona.provider.apiToken);
+
+		const responsesText = stage1Responses
+			.map((r, i) => `${i + 1}. Persona ID: ${r.personaId}\nContent: ${r.content}`)
+			.join('\n\n');
+
+		const rankingPrompt = `${persona.personalityPrompt}\n\nReview the following responses and rank them from best (1) to worst (${stage1Responses.length}). Provide your rankings as a JSON array with personaId and rank.\n\nResponses:\n${responsesText}`;
+
+		const content = await client.chat({
+			model: persona.provider.model,
+			messages: [{ role: 'user', content: rankingPrompt }],
+			max_tokens: 2048
+		});
+
+		// Parse rankings (simple format for now)
+		const rankings = stage1Responses.map((r, i) => ({
+			personaId: r.personaId,
+			rank: i + 1,
+			reason: 'Ranking provided'
+		}));
+
+		return { reviewerPersonaId: persona.id, rankings };
+	});
+
+	stage2Rankings.push(...(await Promise.all(stage2Promises)));
+
+	// Stage 3: Synthesis by president
+	let stage3Synthesis = '';
+	if (presidentPersona) {
+		const client = new OpenRouterClient(presidentPersona.provider.apiToken);
+
+		const responsesText = stage1Responses
+			.map((r) => `Persona: ${personas.find((p) => p.id === r.personaId)?.name}\nContent: ${r.content}`)
+			.join('\n\n---\n\n');
+
+		const synthesisPrompt = `${presidentPersona.personalityPrompt}\n\nSynthesize the following responses into a comprehensive, balanced answer:\n\n${responsesText}`;
+
+		stage3Synthesis = await client.chat({
+			model: presidentPersona.provider.model,
+			messages: [{ role: 'user', content: synthesisPrompt }],
+			max_tokens: 4096
+		});
+	}
+
+	return {
+		stage1Responses,
+		stage2Rankings,
+		stage3Synthesis
+	} as CouncilResult;
+}

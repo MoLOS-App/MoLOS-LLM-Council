@@ -1,6 +1,6 @@
 import { eq, and, desc, like } from 'drizzle-orm';
 import { councilConversations } from '../database/schema';
-import type { Conversation, CouncilStage, CreateConversationInput } from '../../models';
+import type { CouncilConversation, PersonaConversationStage } from '../../models';
 import { db as defaultDb } from '$lib/server/db';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
@@ -11,15 +11,16 @@ export class ConversationRepository {
 		this.db = (db as BetterSQLite3Database<any>) || defaultDb;
 	}
 
-	private mapToConversation(row: Record<string, unknown>): Conversation {
+	private mapToConversation(row: Record<string, unknown>): CouncilConversation {
 		return {
 			...row,
-			selectedModels: (row.selectedModels as string[]) || [],
-			synthesizerModel: (row.synthesizerModel as string) || undefined
-		} as Conversation;
+			selectedPersonaIds: JSON.parse((row.selectedPersonaIds as string) || '[]'),
+			tags: JSON.parse((row.tags as string) || '[]'),
+			messages: []
+		} as CouncilConversation;
 	}
 
-	async getByUserId(userId: string, limit: number = 50): Promise<Conversation[]> {
+	async getByUserId(userId: string, limit: number = 50): Promise<CouncilConversation[]> {
 		const result = await this.db
 			.select()
 			.from(councilConversations)
@@ -30,7 +31,7 @@ export class ConversationRepository {
 		return result.map((row) => this.mapToConversation(row));
 	}
 
-	async getById(id: string, userId: string): Promise<Conversation | null> {
+	async getById(id: string, userId: string): Promise<CouncilConversation | null> {
 		const result = await this.db
 			.select()
 			.from(councilConversations)
@@ -42,16 +43,19 @@ export class ConversationRepository {
 
 	async create(
 		userId: string,
-		input: CreateConversationInput
-	): Promise<Conversation> {
+		query: string,
+		selectedPersonaIds: string[],
+		presidentPersonaId?: string
+	): Promise<CouncilConversation> {
 		const result = await this.db
 			.insert(councilConversations)
 			.values({
 				userId,
-				title: input.title,
-				currentStage: input.currentStage || 'stage_1',
-				selectedModels: input.selectedModels || [],
-				synthesizerModel: input.synthesizerModel || 'anthropic/claude-3.5-sonnet'
+				query,
+				stage: 'initial_responses' as PersonaConversationStage,
+				selectedPersonaIds: JSON.stringify(selectedPersonaIds),
+				presidentPersonaId: presidentPersonaId || null,
+				tags: JSON.stringify([])
 			})
 			.returning();
 
@@ -61,29 +65,12 @@ export class ConversationRepository {
 	async updateStage(
 		id: string,
 		userId: string,
-		stage: CouncilStage
-	): Promise<Conversation | null> {
+		stage: PersonaConversationStage
+	): Promise<CouncilConversation | null> {
 		const result = await this.db
 			.update(councilConversations)
 			.set({
-				currentStage: stage,
-				updatedAt: Math.floor(Date.now() / 1000)
-			})
-			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
-			.returning();
-
-		return result[0] ? this.mapToConversation(result[0] as unknown as Record<string, unknown>) : null;
-	}
-
-	async update(
-		id: string,
-		userId: string,
-		updates: { title?: string; selectedModels?: string[]; synthesizerModel?: string }
-	): Promise<Conversation | null> {
-		const result = await this.db
-			.update(councilConversations)
-			.set({
-				...updates,
+				stage,
 				updatedAt: Math.floor(Date.now() / 1000)
 			})
 			.where(and(eq(councilConversations.id, id), eq(councilConversations.userId, userId)))
@@ -102,14 +89,14 @@ export class ConversationRepository {
 
 	async searchByUserId(
 		userId: string,
-		query: string,
+		searchQuery: string,
 		limit: number = 20
-	): Promise<Conversation[]> {
-		const term = `%${query}%`;
+	): Promise<CouncilConversation[]> {
+		const term = `%${searchQuery}%`;
 		const result = await this.db
 			.select()
 			.from(councilConversations)
-			.where(and(eq(councilConversations.userId, userId), like(councilConversations.title, term)))
+			.where(and(eq(councilConversations.userId, userId), like(councilConversations.query, term)))
 			.orderBy(desc(councilConversations.updatedAt))
 			.limit(limit);
 
