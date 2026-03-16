@@ -16,7 +16,7 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Loader2, Save, Key, Plus, Trash2, Edit, CheckCircle, ArrowLeft, X } from 'lucide-svelte';
+	import { Loader2, Save, Key, Plus, Trash2, Edit, CheckCircle, ArrowLeft, X, Copy } from 'lucide-svelte';
 	import { loadSettings, updateSettings } from '../../../stores/council.store.js';
 	import type { AIProvider, ProviderType } from '../../../models/index.js';
 
@@ -261,6 +261,20 @@
 		}
 	}
 
+	function handleDuplicateProvider(provider: AIProvider) {
+		// Pre-fill the create form with the provider's data
+		newProvider = {
+			type: provider.type,
+			name: `Copy of ${provider.name}`,
+			apiUrl: provider.apiUrl,
+			apiToken: provider.apiToken || '',
+			model: provider.model
+		};
+		editingProvider = null;
+		showCreateForm = true;
+		openAccordionItems = ['new'];
+	}
+
 	function getProviderLabel(type: ProviderType): string {
 		return PROVIDER_TYPES.find((t) => t.value === type)?.label || type;
 	}
@@ -348,6 +362,7 @@
 													id="providerUrl"
 													bind:value={newProvider.apiUrl}
 													placeholder="https://api.example.com/v1"
+													autocomplete="off"
 												/>
 											</div>
 
@@ -358,6 +373,7 @@
 													type="password"
 													bind:value={newProvider.apiToken}
 													placeholder="sk-..."
+													autocomplete="off"
 												/>
 											</div>
 
@@ -469,7 +485,7 @@
 
 														<div class="space-y-2">
 															<Label>API URL *</Label>
-															<Input bind:value={newProvider.apiUrl} />
+															<Input bind:value={newProvider.apiUrl} autocomplete="off" />
 														</div>
 
 														<div class="space-y-2">
@@ -478,6 +494,7 @@
 																type="password"
 																bind:value={newProvider.apiToken}
 																placeholder="Leave unchanged"
+																autocomplete="off"
 															/>
 														</div>
 
@@ -550,6 +567,15 @@
 															>
 																<Edit class="mr-1 h-3 w-3" />
 																Edit
+															</Button>
+
+															<Button
+																variant="outline"
+																size="sm"
+																onclick={() => handleDuplicateProvider(provider)}
+															>
+																<Copy class="mr-1 h-3 w-3" />
+																Duplicate
 															</Button>
 
 															<Button

@@ -137,9 +137,9 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<div class="flex flex-col gap-6 md:flex-row m-auto">
 			<!-- Left Column: Avatar and Quick Settings -->
-			<div class="space-y-6 lg:col-span-1">
+			<div class="space-y-6 w-auto">
 				<!-- Avatar Card -->
 				<Card>
 					<CardHeader>
@@ -155,7 +155,7 @@
 								{avatar}
 							</div>
 						</div>
-						<div class="flex flex-row flex-wrap justify-center gap-2">
+						<div class="flex flex-row flex-wrap justify-center">
 							{#each AVATARS as emoji}
 								<button
 									class="aspect-square h-12 w-12 rounded-lg border-2 border-border bg-background text-center text-2xl transition-all hover:border-primary hover:bg-primary/10 {avatar ===
@@ -247,7 +247,7 @@
 			</div>
 
 			<!-- Right Column: Main Content -->
-			<div class="space-y-6 lg:col-span-2">
+			<div class="space-y-6 w-full">
 				<!-- Basic Info Card -->
 				<Card>
 					<CardHeader>
@@ -329,7 +329,7 @@
 	</div>
 
 	<!-- Fixed Bottom Bar -->
-	<div class="absolute right-0 bottom-0 left-0 border-t bg-background p-4">
+	<div class="relative bottom-0 left-0 border-t bg-background p-4">
 		<div class="flex items-center justify-between">
 			<Button variant="outline" onclick={handleCancel}>Cancel</Button>
 			<div class="flex items-center gap-2">
