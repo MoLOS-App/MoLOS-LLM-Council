@@ -19,6 +19,9 @@ const DEFAULT_SETTINGS = {
   ],
   defaultSynthesizer: "anthropic/claude-3.5-sonnet",
   streamingEnabled: true,
+  maxTokensStage1: 1024,
+  maxTokensStage2: 512,
+  maxTokensStage3: 4096,
 };
 
 /**
@@ -32,6 +35,9 @@ interface CouncilSettingsInsert {
   customStage1Prompt: string | null;
   customStage2Prompt: string | null;
   customStage3Prompt: string | null;
+  maxTokensStage1: number;
+  maxTokensStage2: number;
+  maxTokensStage3: number;
   streamingEnabled: boolean;
   createdAt: number;
   updatedAt: number;
@@ -62,6 +68,10 @@ export class SettingsRepository {
       customStage1Prompt: (row.customStage1Prompt as string) || undefined,
       customStage2Prompt: (row.customStage2Prompt as string) || undefined,
       customStage3Prompt: (row.customStage3Prompt as string) || undefined,
+      maxTokensStage1: (row.maxTokensStage1 as number) ?? DEFAULT_SETTINGS.maxTokensStage1,
+      maxTokensStage2: (row.maxTokensStage2 as number) ?? DEFAULT_SETTINGS.maxTokensStage2,
+      maxTokensStage3: (row.maxTokensStage3 as number) ?? DEFAULT_SETTINGS.maxTokensStage3,
+      streamingEnabled: (row.streamingEnabled as boolean) ?? DEFAULT_SETTINGS.streamingEnabled,
     } as CouncilSettings;
   }
 
@@ -97,6 +107,9 @@ export class SettingsRepository {
           customStage1Prompt: null,
           customStage2Prompt: null,
           customStage3Prompt: null,
+          maxTokensStage1: DEFAULT_SETTINGS.maxTokensStage1,
+          maxTokensStage2: DEFAULT_SETTINGS.maxTokensStage2,
+          maxTokensStage3: DEFAULT_SETTINGS.maxTokensStage3,
           streamingEnabled: DEFAULT_SETTINGS.streamingEnabled,
           createdAt: now,
           updatedAt: now,
@@ -137,6 +150,12 @@ export class SettingsRepository {
         updateData.customStage2Prompt = input.customStage2Prompt;
       if (input.customStage3Prompt !== undefined)
         updateData.customStage3Prompt = input.customStage3Prompt;
+      if (input.maxTokensStage1 !== undefined)
+        updateData.maxTokensStage1 = input.maxTokensStage1;
+      if (input.maxTokensStage2 !== undefined)
+        updateData.maxTokensStage2 = input.maxTokensStage2;
+      if (input.maxTokensStage3 !== undefined)
+        updateData.maxTokensStage3 = input.maxTokensStage3;
       if (input.streamingEnabled !== undefined)
         updateData.streamingEnabled = input.streamingEnabled;
 
@@ -171,6 +190,9 @@ export class SettingsRepository {
         defaultModels: JSON.stringify(DEFAULT_SETTINGS.defaultModels),
         defaultSynthesizer: DEFAULT_SETTINGS.defaultSynthesizer,
         streamingEnabled: DEFAULT_SETTINGS.streamingEnabled,
+        maxTokensStage1: DEFAULT_SETTINGS.maxTokensStage1,
+        maxTokensStage2: DEFAULT_SETTINGS.maxTokensStage2,
+        maxTokensStage3: DEFAULT_SETTINGS.maxTokensStage3,
         customStage1Prompt: null,
         customStage2Prompt: null,
         customStage3Prompt: null,
@@ -192,6 +214,12 @@ export class SettingsRepository {
         insertData.customStage2Prompt = input.customStage2Prompt;
       if (input.customStage3Prompt !== undefined)
         insertData.customStage3Prompt = input.customStage3Prompt;
+      if (input.maxTokensStage1 !== undefined)
+        insertData.maxTokensStage1 = input.maxTokensStage1;
+      if (input.maxTokensStage2 !== undefined)
+        insertData.maxTokensStage2 = input.maxTokensStage2;
+      if (input.maxTokensStage3 !== undefined)
+        insertData.maxTokensStage3 = input.maxTokensStage3;
       if (input.streamingEnabled !== undefined)
         insertData.streamingEnabled = input.streamingEnabled;
 

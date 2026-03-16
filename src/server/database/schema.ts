@@ -14,7 +14,7 @@ export const councilProviders = sqliteTable("MoLOS-LLM-Council_providers", {
   model: text("model").notNull(),
   isDefault: integer("is_default", { mode: "boolean" })
     .notNull()
-    .default(false),
+    .default(sql`0`),
   createdAt: integer("created_at")
     .notNull()
     .default(sql`(strftime('%s','now'))`),
@@ -37,11 +37,11 @@ export const councilPersonas = sqliteTable("MoLOS-LLM-Council_personas", {
   }),
   isPresident: integer("is_president", { mode: "boolean" })
     .notNull()
-    .default(false),
+    .default(sql`0`),
   isDefault: integer("is_default", { mode: "boolean" })
     .notNull()
-    .default(false),
-  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+    .default(sql`0`),
+  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(sql`0`),
   createdAt: integer("created_at")
     .notNull()
     .default(sql`(strftime('%s','now'))`),
@@ -111,9 +111,14 @@ export const councilSettings = sqliteTable("MoLOS-LLM-Council_settings", {
   customStage1Prompt: text("custom_stage1_prompt"),
   customStage2Prompt: text("custom_stage2_prompt"),
   customStage3Prompt: text("custom_stage3_prompt"),
+  // Max tokens for each stage (configurable for performance)
+  maxTokensStage1: integer("max_tokens_stage1").notNull().default(1024),
+  maxTokensStage2: integer("max_tokens_stage2").notNull().default(512),
+  maxTokensStage3: integer("max_tokens_stage3").notNull().default(4096),
+  // Test column for  testColumn: integer("test_column").default(0),
   streamingEnabled: integer("streaming_enabled", { mode: "boolean" })
     .notNull()
-    .default(true),
+    .default(sql`1`),
   createdAt: integer("created_at")
     .notNull()
     .default(sql`(strftime('%s','now'))`),

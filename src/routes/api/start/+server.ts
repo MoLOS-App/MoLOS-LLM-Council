@@ -8,6 +8,12 @@ import { PersonaRepository } from "../../../server/repositories/persona-reposito
 import { PersonaConversationStage, SSEEventType } from "../../../models";
 import { db } from "$lib/server/db";
 import type { CouncilEvent } from "../../../server/council/orchestrator";
+import {
+	runCouncilExecutor,
+	validatePersonaProvider,
+	DEFAULT_MAX_TOKENS,
+	type CouncilExecutorConfig,
+} from "../../../server/council/council-executor";
 
 const StartCouncilSchema = z.object({
   query: z.string().min(1, "Query is required"),
@@ -83,7 +89,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         );
       }
 
-      // Check for ZAI configuration issues
+      // Check for ZAI configuration issues (warnings only, both endpoints are valid)
       if (
         persona.provider?.type === "custom" &&
         persona.provider?.apiUrl?.includes("api.z.ai")
@@ -93,38 +99,22 @@ export const POST: RequestHandler = async ({ locals, request }) => {
         );
       }
 
-      // Check for ZAI coding endpoint being used with general provider
-      if (
-        persona.provider?.type === "zai" &&
-        persona.provider?.apiUrl?.includes("/coding/paas/v4")
-      ) {
-        console.error(
-          "[Council] ZAI general provider configured with coding endpoint",
-        );
-        throw error(
-          400,
-          'Invalid ZAI API URL. Please change provider type to "Z.AI (Coding)" or update API URL to: https://api.z.ai/api/paas/v4',
+      // Warn about ZAI type/endpoint mismatches (both endpoints are valid!)
+      const isCodingEndpoint = persona.provider?.apiUrl?.includes("/coding/paas/v4");
+      if (persona.provider?.type === "zai" && isCodingEndpoint) {
+        console.warn(
+          '[Council] Provider uses ZAI general type with coding endpoint. ' +
+          'Consider changing to "Z.AI (Coding)" type for clarity.',
         );
       }
-
-      // Check for ZAI general endpoint being used with coding provider
       if (
         persona.provider?.type === "zai_coding" &&
-        !persona.provider?.apiUrl?.includes("/coding/paas/v4")
+        persona.provider?.apiUrl?.includes("/api/paas/v4") &&
+        !isCodingEndpoint
       ) {
         console.warn(
-          "[Council] ZAI coding provider configured with general endpoint",
-        );
-      }
-
-      // Check for ZAI coding endpoint being used
-      if (persona.provider?.apiUrl?.includes("/coding/paas/v4")) {
-        console.error(
-          "[Council] ZAI provider configured with coding endpoint instead of chat endpoint",
-        );
-        throw error(
-          400,
-          "Invalid ZAI API URL. Please update provider to use: https://api.z.ai/api/paas/v4",
+          '[Council] Provider uses ZAI Coding type with general endpoint. ' +
+          'Consider changing to "Z.AI" type for clarity.',
         );
       }
     }
@@ -137,25 +127,22 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       );
     }
 
-    // Check president for ZAI configuration issues
-    if (
-      presidentPersona?.provider?.type === "zai" &&
-      presidentPersona?.provider?.apiUrl?.includes("/coding/paas/v4")
-    ) {
-      console.error(
-        "[Council] President ZAI general provider configured with coding endpoint",
-      );
-      throw error(
-        400,
-        'Invalid ZAI API URL. Please change provider type to "Z.AI (Coding)" or update API URL to: https://api.z.ai/api/paas/v4',
+    // Check president for ZAI configuration issues (warnings only, both endpoints are valid)
+    const presidentIsCodingEndpoint = presidentPersona?.provider?.apiUrl?.includes("/coding/paas/v4");
+    if (presidentPersona?.provider?.type === "zai" && presidentIsCodingEndpoint) {
+      console.warn(
+        '[Council] President provider uses ZAI general type with coding endpoint. ' +
+        'Consider changing to "Z.AI (Coding)" type for clarity.',
       );
     }
     if (
       presidentPersona?.provider?.type === "zai_coding" &&
-      !presidentPersona?.provider?.apiUrl?.includes("/coding/paas/v4")
+      presidentPersona?.provider?.apiUrl?.includes("/api/paas/v4") &&
+      !presidentIsCodingEndpoint
     ) {
       console.warn(
-        "[Council] President ZAI coding provider configured with general endpoint",
+        '[Council] President provider uses ZAI Coding type with general endpoint. ' +
+        'Consider changing to "Z.AI" type for clarity.',
       );
     }
 
@@ -190,11 +177,23 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
     // Run council synchronously (non-streaming only for now)
     if (true) {
-      // Run council synchronously
-      const councilResult = await runCouncilSync(
+      // Get settings for max tokens configuration
+      const settingsRepo = new SettingsRepository(db);
+      const settings = await settingsRepo.getOrCreate(userId);
+      const councilConfig: CouncilExecutorConfig = {
+        maxTokensStage1: settings.maxTokensStage1 ?? DEFAULT_MAX_TOKENS.stage1,
+        maxTokensStage2: settings.maxTokensStage2 ?? DEFAULT_MAX_TOKENS.stage2,
+        maxTokensStage3: settings.maxTokensStage3 ?? DEFAULT_MAX_TOKENS.stage3,
+      };
+
+      console.log(`[Council] Running with max tokens - Stage1: ${councilConfig.maxTokensStage1}, Stage2: ${councilConfig.maxTokensStage2}, Stage3: ${councilConfig.maxTokensStage3}`);
+
+      // Run council using shared executor (same as AI tools)
+      const councilResult = await runCouncilExecutor(
         query,
         selectedPersonas,
         presidentPersona,
+        councilConfig,
       );
 
       // Save stage 1 messages
@@ -380,143 +379,3 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json(errorResponse);
   }
 };
-
-/**
- * Run council synchronously (non-streaming)
- */
-async function runCouncilSync(
-  query: string,
-  personas: any[],
-  presidentPersona: any | null,
-) {
-  const { createAIClient } = await import("../../../server/council/ai-client");
-
-  interface Stage1Result {
-    personaId: string;
-    content: string;
-  }
-
-  interface Stage2Result {
-    reviewerPersonaId: string;
-    rankings: any[];
-  }
-
-  interface CouncilResult {
-    stage1Responses: Stage1Result[];
-    stage2Rankings: Stage2Result[];
-    stage3Synthesis: string;
-  }
-
-  const stage1Responses: Stage1Result[] = [];
-  const stage2Rankings: Stage2Result[] = [];
-
-  // Stage 1: Get responses from each persona
-  const stage1Promises = personas.map(async (persona) => {
-    try {
-      const client = createAIClient(
-        persona.provider.type,
-        persona.provider.apiToken,
-        persona.provider.apiUrl,
-      );
-      const prompt = `${persona.personalityPrompt}\n\nUser: ${query}`;
-
-      const content = await client.chat({
-        model: persona.provider.model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 4096,
-      });
-
-      return { personaId: persona.id, content };
-    } catch (error) {
-      console.error(
-        `[Council] Stage 1 failed for persona ${persona.name}:`,
-        error,
-      );
-      throw error;
-    }
-  });
-
-  stage1Responses.push(...(await Promise.all(stage1Promises)));
-
-  // Stage 2: Each persona ranks the responses
-  const stage2Promises = personas.map(async (persona) => {
-    try {
-      const client = createAIClient(
-        persona.provider.type,
-        persona.provider.apiToken,
-        persona.provider.apiUrl,
-      );
-
-      const responsesText = stage1Responses
-        .map(
-          (r, i) =>
-            `${i + 1}. Persona ID: ${r.personaId}\nContent: ${r.content}`,
-        )
-        .join("\n\n");
-
-      const rankingPrompt = `${persona.personalityPrompt}\n\nReview the following responses and rank them from best (1) to worst (${stage1Responses.length}). Provide your rankings as a JSON array with personaId and rank.\n\nResponses:\n${responsesText}`;
-
-      const content = await client.chat({
-        model: persona.provider.model,
-        messages: [{ role: "user", content: rankingPrompt }],
-        max_tokens: 2048,
-      });
-
-      // Parse rankings (simple format for now)
-      const rankings = stage1Responses.map((r, i) => ({
-        personaId: r.personaId,
-        rank: i + 1,
-        reason: "Ranking provided",
-      }));
-
-      return { reviewerPersonaId: persona.id, rankings };
-    } catch (error) {
-      console.error(
-        `[Council] Stage 2 failed for persona ${persona.name}:`,
-        error,
-      );
-      throw error;
-    }
-  });
-
-  stage2Rankings.push(...(await Promise.all(stage2Promises)));
-
-  // Stage 3: Synthesis by president
-  let stage3Synthesis = "";
-  if (presidentPersona && presidentPersona.provider?.apiToken) {
-    try {
-      const client = createAIClient(
-        presidentPersona.provider.type,
-        presidentPersona.provider.apiToken,
-        presidentPersona.provider.apiUrl,
-      );
-
-      const responsesText = stage1Responses
-        .map(
-          (r) =>
-            `Persona: ${personas.find((p) => p.id === r.personaId)?.name}\nContent: ${r.content}`,
-        )
-        .join("\n\n---\n\n");
-
-      const synthesisPrompt = `${presidentPersona.personalityPrompt}\n\nSynthesize the following responses into a comprehensive, balanced answer:\n\n${responsesText}`;
-
-      stage3Synthesis = await client.chat({
-        model: presidentPersona.provider.model,
-        messages: [{ role: "user", content: synthesisPrompt }],
-        max_tokens: 4096,
-      });
-    } catch (error) {
-      console.error(
-        `[Council] Stage 3 failed for president ${presidentPersona.name}:`,
-        error,
-      );
-      throw error;
-    }
-  }
-
-  return {
-    stage1Responses,
-    stage2Rankings,
-    stage3Synthesis,
-  } as CouncilResult;
-}

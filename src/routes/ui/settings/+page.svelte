@@ -58,6 +58,9 @@
 	let customStage1Prompt = $state('');
 	let customStage2Prompt = $state('');
 	let customStage3Prompt = $state('');
+	let maxTokensStage1 = $state(1024);
+	let maxTokensStage2 = $state(512);
+	let maxTokensStage3 = $state(4096);
 
 	async function loadProvidersData() {
 		const response = await fetch('/api/MoLOS-LLM-Council/providers');
@@ -76,6 +79,9 @@
 			customStage1Prompt = settings.customStage1Prompt || '';
 			customStage2Prompt = settings.customStage2Prompt || '';
 			customStage3Prompt = settings.customStage3Prompt || '';
+			maxTokensStage1 = settings.maxTokensStage1 ?? 1024;
+			maxTokensStage2 = settings.maxTokensStage2 ?? 512;
+			maxTokensStage3 = settings.maxTokensStage3 ?? 4096;
 		}
 	});
 
@@ -86,7 +92,10 @@
 				streamingEnabled,
 				customStage1Prompt: customStage1Prompt.trim() || undefined,
 				customStage2Prompt: customStage2Prompt.trim() || undefined,
-				customStage3Prompt: customStage3Prompt.trim() || undefined
+				customStage3Prompt: customStage3Prompt.trim() || undefined,
+				maxTokensStage1,
+				maxTokensStage2,
+				maxTokensStage3
 			});
 		} catch (err) {
 			console.error('Failed to save settings:', err);
@@ -594,6 +603,55 @@
 
 				<Card>
 					<CardHeader>
+						<CardTitle>Max Tokens</CardTitle>
+						<CardDescription>
+							Configure response length limits for each stage. Lower values = faster responses.
+						</CardDescription>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="space-y-2">
+							<Label for="maxTokens1">Stage 1: Initial Responses</Label>
+							<Input
+								id="maxTokens1"
+								type="number"
+								min={256}
+								max={8192}
+								step={256}
+								bind:value={maxTokensStage1}
+							/>
+							<p class="text-muted-foreground text-xs">Tokens per persona response (default: 1024)</p>
+						</div>
+
+						<div class="space-y-2">
+							<Label for="maxTokens2">Stage 2: Peer Review</Label>
+							<Input
+								id="maxTokens2"
+								type="number"
+								min={128}
+								max={4096}
+								step={128}
+								bind:value={maxTokensStage2}
+							/>
+							<p class="text-muted-foreground text-xs">Tokens per review (default: 512)</p>
+						</div>
+
+						<div class="space-y-2">
+							<Label for="maxTokens3">Stage 3: Synthesis</Label>
+							<Input
+								id="maxTokens3"
+								type="number"
+								min={512}
+								max={16384}
+								step={512}
+								bind:value={maxTokensStage3}
+							/>
+							<p class="text-muted-foreground text-xs">Tokens for final synthesis (default: 4096)</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
 						<CardTitle>Custom Prompts</CardTitle>
 						<CardDescription>
 							Customize system prompts for each council stage. Leave empty to use defaults.
@@ -635,7 +693,7 @@
 		</div>
 
 		<!-- Save Settings Button -->
-		<div class="fixed right-0 bottom-0 left-0 z-0 bg-background p-4">
+		<div class="relative right-0 bottom-0 left-0 z-0 bg-background p-4">
 			<div class="container-fluid flex justify-end">
 				<Button onclick={handleSaveSettings} disabled={isSaving} size="lg">
 					{#if isSaving}

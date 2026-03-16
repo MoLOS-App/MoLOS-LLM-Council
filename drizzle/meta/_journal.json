@@ -15,6 +15,13 @@
       "when": 1740457741000,
       "tag": "0001_schema_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1740457742000,
+      "tag": "0002_add_max_tokens",
+      "breakpoints": true
     }
   ]
 }

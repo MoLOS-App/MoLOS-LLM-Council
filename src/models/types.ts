@@ -90,6 +90,10 @@ export interface CouncilSettings {
   customStage1Prompt?: string;
   customStage2Prompt?: string;
   customStage3Prompt?: string;
+  // Max tokens for each stage (configurable for performance)
+  maxTokensStage1?: number; // Default: 1024
+  maxTokensStage2?: number; // Default: 512
+  maxTokensStage3?: number; // Default: 4096
   streamingEnabled?: boolean;
   hasApiKey?: boolean;
   createdAt: number;
@@ -98,7 +102,11 @@ export interface CouncilSettings {
 
 export type UpdateSettingsInput = Partial<
   Omit<CouncilSettings, "userId" | "createdAt" | "updatedAt">
->;
+> & {
+  maxTokensStage1?: number;
+  maxTokensStage2?: number;
+  maxTokensStage3?: number;
+};
 
 /**
  * SSE Event Types for Streaming
@@ -366,4 +374,11 @@ export interface ToolDefinition {
     required?: string[];
   };
   execute: (params: any) => Promise<any>;
+  metadata?: {
+    submodule: string;
+    category?: string;
+    tags?: string[];
+    priority?: number;
+    essential?: boolean;
+  };
 }
