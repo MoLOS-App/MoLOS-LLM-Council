@@ -16,7 +16,11 @@ export interface AIRequest {
   stream?: boolean;
   max_tokens?: number;
   temperature?: number;
+  timeout?: number; // Request timeout in milliseconds
 }
+
+// Default timeout: 5 minutes (300000ms) - AI requests can take a while
+const DEFAULT_TIMEOUT = 300000;
 
 export interface AIResponse {
   id: string;
@@ -61,19 +65,35 @@ export abstract class BaseAIClient {
       );
     }
 
-    const response = await fetch(this.apiUrl, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify(this.formatRequest(request)),
-    });
+    const timeout = request.timeout ?? DEFAULT_TIMEOUT;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`API error: ${response.statusText} - ${error}`);
+    try {
+      const response = await fetch(this.apiUrl, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(this.formatRequest(request)),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`API error: ${response.statusText} - ${error}`);
+      }
+
+      const data = await response.json();
+      return this.parseResponse(data);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new Error(
+          `Request timed out after ${timeout / 1000} seconds. Please try again or use a simpler query.`,
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const data = await response.json();
-    return this.parseResponse(data);
   }
 }
 

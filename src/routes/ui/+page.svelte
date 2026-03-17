@@ -48,6 +48,8 @@
 		const error = $councilUIState.error;
 		if (error) {
 			toast.error(error);
+			// Clear error after showing toast to prevent duplicate toasts
+			councilUIState.update((s) => ({ ...s, error: null }));
 		}
 	});
 

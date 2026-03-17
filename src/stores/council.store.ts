@@ -49,7 +49,7 @@ export const stage3SynthesisStore = writable<string>("");
 export const councilUIState = writable({
   loading: false,
   error: null as string | null,
-  isStreaming: false,
+  isProcessing: false,
   currentStage: "initial_responses" as PersonaConversationStage,
   lastLoaded: null as number | null,
 });
@@ -164,7 +164,8 @@ export async function loadConversation(conversationId: string) {
 }
 
 /**
- * Start a council session (non-streaming)
+ * Start a council session with progressive updates
+ * Each stage updates the UI as responses come in
  */
 export async function startCouncil(
   query: string,
@@ -178,87 +179,165 @@ export async function startCouncil(
 
   councilUIState.update((s) => ({
     ...s,
-    isStreaming: true,
+    isProcessing: true,
     error: null,
     currentStage: PCS.INITIAL_RESPONSES,
   }));
 
+  const errors: string[] = [];
+
   try {
-    const response = await fetch(`${API_BASE}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query,
-        personaIds,
-        presidentPersonaId,
-        streamingEnabled: false,
-      }),
+    // Load personas to get their details
+    const personasData = await apiFetch<{ personas: PersonaWithProvider[] }>("/personas");
+    const selectedPersonas = personasData.personas.filter((p) => personaIds?.includes(p.id));
+    const presidentPersona = personasData.personas.find((p) => p.id === presidentPersonaId);
+
+    if (selectedPersonas.length === 0) {
+      councilUIState.update((s) => ({
+        ...s,
+        isProcessing: false,
+        error: "No personas selected",
+      }));
+      return { success: false, error: "No personas selected" };
+    }
+
+    // === STAGE 1: Get responses from each persona (parallel, update as they complete) ===
+    const stage1Responses: Array<{ personaId: string; personaName: string; content: string }> = [];
+
+    const stage1Promises = selectedPersonas.map(async (persona) => {
+      try {
+        const response = await fetch(`${API_BASE}/response`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId: persona.id,
+            query,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.success === false) {
+          const errorMsg = data.error || `Failed to get response from ${persona.name}`;
+          errors.push(errorMsg);
+          return null;
+        }
+
+        // Update the store immediately as each response comes in
+        stage1ResponsesStore.update((map) => {
+          const newMap = new Map(map);
+          newMap.set(data.response.personaId, data.response.content);
+          return newMap;
+        });
+
+        stage1Responses.push(data.response);
+        return data.response;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : `Failed to get response from ${persona.name}`;
+        errors.push(errorMsg);
+        return null;
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to start council: ${response.statusText}`);
-    }
+    await Promise.all(stage1Promises);
 
-    const data = await response.json();
-
-    // Check for error response from API
-    // API can return either { success: false, error: "..." } or { conversationId, result }
-    if (data.success === false) {
+    // Check if we have any successful responses
+    if (stage1Responses.length === 0) {
+      const errorMsg = errors.length > 0 ? errors[0] : "Failed to get any responses";
       councilUIState.update((s) => ({
         ...s,
-        isStreaming: false,
-        error: data.error || "An error occurred",
+        isProcessing: false,
+        error: errorMsg,
       }));
-      return { success: false, error: data.error };
+      return { success: false, error: errorMsg };
     }
 
-    // Validate we have the expected response structure
-    if (!data.result && !data.conversationId) {
-      councilUIState.update((s) => ({
-        ...s,
-        isStreaming: false,
-        error: "Invalid response from server",
-      }));
-      return { success: false, error: "Invalid response from server" };
+    // Show warning if some failed
+    if (errors.length > 0) {
+      console.warn("[Council] Some responses failed:", errors);
     }
 
-    // Process stage 1 responses
-    if (data.result?.stage1Responses) {
-      councilUIState.update((s) => ({ ...s, currentStage: PCS.PEER_REVIEW }));
+    // === STAGE 2: Get rankings from each persona (parallel, update as they complete) ===
+    councilUIState.update((s) => ({ ...s, currentStage: PCS.PEER_REVIEW }));
 
-      const stage1 = new Map<string, string>();
-      for (const resp of data.result.stage1Responses) {
-        stage1.set(resp.personaId, resp.content);
+    const stage2Rankings: Stage2Ranking[] = [];
+
+    const stage2Promises = selectedPersonas.map(async (persona) => {
+      try {
+        const response = await fetch(`${API_BASE}/ranking`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId: persona.id,
+            responses: stage1Responses,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.success === false) {
+          // Don't fail the whole council for ranking errors
+          console.warn(`Ranking failed for ${persona.name}:`, data.error);
+          return null;
+        }
+
+        // Update the store immediately as each ranking comes in
+        stage2RankingsStore.update((rankings) => [...rankings, data.ranking]);
+
+        stage2Rankings.push(data.ranking);
+        return data.ranking;
+      } catch (err) {
+        console.warn(`Ranking failed for ${persona.name}:`, err);
+        return null;
       }
-      stage1ResponsesStore.set(stage1);
+    });
+
+    await Promise.all(stage2Promises);
+
+    // === STAGE 3: Synthesis by president ===
+    councilUIState.update((s) => ({ ...s, currentStage: PCS.SYNTHESIS }));
+
+    if (presidentPersona && stage1Responses.length > 0) {
+      try {
+        const response = await fetch(`${API_BASE}/synthesis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            presidentPersonaId: presidentPersona.id,
+            responses: stage1Responses,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.success === false) {
+          console.warn("Synthesis failed:", data.error);
+        } else {
+          stage3SynthesisStore.set(data.synthesis);
+        }
+      } catch (err) {
+        console.warn("Synthesis failed:", err);
+      }
     }
 
-    // Process stage 2 rankings
-    if (data.result?.stage2Rankings) {
-      councilUIState.update((s) => ({ ...s, currentStage: PCS.SYNTHESIS }));
-
-      stage2RankingsStore.set(data.result.stage2Rankings);
-    }
-
-    // Process stage 3 synthesis
-    if (data.result?.stage3Synthesis) {
-      councilUIState.update((s) => ({ ...s, currentStage: PCS.COMPLETED }));
-
-      stage3SynthesisStore.set(data.result.stage3Synthesis);
-    }
-
-    councilUIState.update((s) => ({ ...s, isStreaming: false }));
-    return {
-      success: true,
-      conversationId: data.conversationId,
-      result: data.result,
-    };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to start council";
+    // Mark as complete
     councilUIState.update((s) => ({
       ...s,
-      isStreaming: false,
+      isProcessing: false,
+      currentStage: PCS.COMPLETED,
+    }));
+
+    // Return first error if any (but don't fail - partial results are still useful)
+    if (errors.length > 0) {
+      return { success: true, warning: errors[0] };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to start council";
+    councilUIState.update((s) => ({
+      ...s,
+      isProcessing: false,
       error: message,
     }));
     return { success: false, error: message };

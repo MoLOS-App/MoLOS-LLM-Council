@@ -12,7 +12,6 @@
 		CardTitle
 	} from '$lib/components/ui/card/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { Switch } from '$lib/components/ui/switch/index.js';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
@@ -54,7 +53,6 @@
 		model: ''
 	});
 
-	let streamingEnabled = $state(true);
 	let customStage1Prompt = $state('');
 	let customStage2Prompt = $state('');
 	let customStage3Prompt = $state('');
@@ -75,7 +73,6 @@
 		const settings = await loadSettings();
 
 		if (settings) {
-			streamingEnabled = settings.streamingEnabled ?? true;
 			customStage1Prompt = settings.customStage1Prompt || '';
 			customStage2Prompt = settings.customStage2Prompt || '';
 			customStage3Prompt = settings.customStage3Prompt || '';
@@ -89,7 +86,6 @@
 		isSaving = true;
 		try {
 			await updateSettings({
-				streamingEnabled,
 				customStage1Prompt: customStage1Prompt.trim() || undefined,
 				customStage2Prompt: customStage2Prompt.trim() || undefined,
 				customStage3Prompt: customStage3Prompt.trim() || undefined,
@@ -607,26 +603,6 @@
 
 			<!-- Right Column: Council Settings -->
 			<div class="space-y-6">
-				<Card>
-					<CardHeader>
-						<CardTitle>Streaming Settings</CardTitle>
-						<CardDescription>Control how responses are displayed</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div class="flex items-center justify-between py-2">
-							<div class="flex-1">
-								<Label for="streaming">Enable Streaming</Label>
-								<p class="text-muted-foreground text-sm">Show responses as they are generated</p>
-							</div>
-							<Switch
-								id="streaming"
-								checked={streamingEnabled}
-								onCheckedChange={(v) => (streamingEnabled = v)}
-							/>
-						</div>
-					</CardContent>
-				</Card>
-
 				<Card>
 					<CardHeader>
 						<CardTitle>Max Tokens</CardTitle>
