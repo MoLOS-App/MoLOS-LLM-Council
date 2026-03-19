@@ -167,17 +167,17 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 };
 
 /**
- * DELETE /api/MoLOS-LLM-Council
+ * DELETE /api/MoLOS-LLM-Council?id=xxx
  * Delete a conversation
  */
-export const DELETE: RequestHandler = async ({ locals, request }) => {
+export const DELETE: RequestHandler = async ({ locals, url }) => {
 	const userId = locals.user?.id;
 	if (!userId) {
 		throw error(401, 'Unauthorized');
 	}
 
 	try {
-		const { id } = await request.json();
+		const id = url.searchParams.get('id');
 
 		if (!id) {
 			throw error(400, 'Conversation ID is required');
