@@ -48,7 +48,7 @@
 <div class="space-y-3">
 	<div class="flex items-center gap-2">
 		<Users class="h-4 w-4 text-blue-500" />
-		<span class="font-medium">Initial Responses</span>
+		<span class="font-medium text-sm md:text-base">Initial Responses</span>
 		{#if isActive}
 			<Loader2 class="h-4 w-4 animate-spin text-primary" />
 		{/if}
@@ -57,16 +57,16 @@
 
 	{#if responseList().length > 0}
 		<Tabs bind:value={selectedTab} class="w-full">
-			<TabsList class="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+			<TabsList class="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
 				{#each responseList() as response (response.personaId)}
 					<TabsTrigger
 						value={response.personaId}
-						class="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+						class="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs md:px-3 md:py-1.5 md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
 					>
 						{#if response.persona?.avatar}
-							<span>{response.persona.avatar}</span>
+							<span class="text-sm md:text-base">{response.persona.avatar}</span>
 						{/if}
-						<span class="text-sm">{response.personaName}</span>
+						<span>{response.personaName}</span>
 						{#if isActive && !response.content}
 							<Loader2 class="h-3 w-3 animate-spin" />
 						{/if}
@@ -88,14 +88,14 @@
 			{/each}
 		</Tabs>
 	{:else if isActive}
-		<div class="flex items-center justify-center rounded-lg border border-dashed p-6">
+		<div class="flex items-center justify-center rounded-lg border border-dashed p-4 md:p-6">
 			<div class="text-center">
 				<Loader2 class="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
 				<p class="text-muted-foreground text-sm">Gathering responses...</p>
 			</div>
 		</div>
 	{:else if !isComplete}
-		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-3 md:p-4 text-center text-xs md:text-sm">
 			Waiting to start...
 		</div>
 	{/if}

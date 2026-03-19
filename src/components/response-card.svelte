@@ -55,10 +55,10 @@
 	}
 </script>
 
-{#if compact}
+ {#if compact}
 	<!-- Compact mode for horizontal scrolling -->
 	<div
-		class="flex h-full w-[340px] shrink-0 flex-col overflow-hidden rounded-lg border {isSynthesis
+		class="flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-lg border md:w-[340px] {isSynthesis
 			? 'border-primary ring-2 ring-primary/20'
 			: ''}"
 	>
@@ -87,7 +87,7 @@
 				</div>
 			{:else}
 				<div
-					class="prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 break-words"
+					class="prose prose-sm prose-p:text-sm prose-headings:text-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 break-words"
 				>
 					{#if content}
 						{@html renderMarkdown(content)}
@@ -135,7 +135,7 @@
 			</div>
 		</CardHeader>
 		<CardContent>
-			<div class="prose-sm prose dark:prose-invert max-w-none">
+			<div class="prose prose-sm prose-headings:text-base prose-p:text-sm prose-ul:text-sm prose-ol:text-sm dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-3 prose-code:text-xs prose-pre:text-xs prose-img:max-w-full prose-hr:my-4">
 				{#if !content && isStreaming}
 					<div class="text-muted-foreground flex items-center gap-2">
 						<Loader2 class="h-4 w-4 animate-spin" />

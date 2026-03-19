@@ -14,15 +14,17 @@
 		deleteConversation
 	} from '../../../stores/council.store';
 	import { Sidebar, Stage1Panel, Stage2Panel, Stage3Panel } from '../../../components';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Plus, ArrowLeft, Inbox, Loader2 } from 'lucide-svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Drawer from '$lib/components/ui/drawer';
+	import { Plus, ArrowLeft, Inbox, Loader2, Menu } from 'lucide-svelte';
 	import type { CouncilConversation, PersonaWithProvider } from '../../../models/index.js';
 
 	let availablePersonas = $state<PersonaWithProvider[]>([]);
 	let mounted = false;
 	let showDeleteDialog = $state(false);
 	let pendingDeleteId = $state<string | null>(null);
+	let showMobileDrawer = $state(false);
 
 	onMount(async () => {
 		// Only initialize once
@@ -84,16 +86,67 @@
 	}
 </script>
 
-<div class="flex h-full">
-	<!-- Sidebar -->
+<div class="flex h-full flex-col md:flex-row">
+	<!-- Mobile Header -->
+	<div class="border-b bg-background p-4 md:hidden">
+		<div class="flex items-center justify-between">
+			<Button variant="ghost" size="icon" onclick={() => (showMobileDrawer = true)} aria-label="Open menu">
+				<Menu class="h-5 w-5" />
+			</Button>
+			<h1 class="text-lg font-semibold">History</h1>
+		</div>
+	</div>
+
+	<!-- Mobile Drawer -->
+	<Drawer.Root bind:open={showMobileDrawer} direction="left">
+		<Drawer.Content class="h-full w-[85vw] max-w-xs border-r bg-background">
+			<Drawer.Close
+				class="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-muted hover:bg-muted-foreground/10 transition-colors"
+				aria-label="Close menu"
+			>
+				✕
+			</Drawer.Close>
+			{#if $councilUIState.loading && $conversationsStore.length === 0}
+				<div class="flex h-full items-center justify-center p-4">
+					<Loader2 class="text-muted-foreground h-6 w-6 animate-spin" />
+				</div>
+			{:else if $conversationsStore.length === 0}
+				<div class="flex h-full flex-col items-center justify-center p-4 text-center">
+					<div class="mb-4 rounded-full bg-muted p-4">
+						<Inbox class="text-muted-foreground h-8 w-8" />
+					</div>
+					<h3 class="mb-2 text-sm font-semibold">No history yet</h3>
+					<p class="text-muted-foreground mb-4 text-xs">
+						Start a council consultation to see your history here
+					</p>
+				</div>
+			{:else}
+				<Sidebar
+					conversations={$conversationsStore}
+					currentConversationId={$currentConversationStore?.id}
+					onSelect={(id) => {
+						handleSelect(id);
+						showMobileDrawer = false;
+					}}
+					onNew={() => {
+						handleNew();
+						showMobileDrawer = false;
+					}}
+					onDelete={handleDeleteRequest}
+				/>
+			{/if}
+		</Drawer.Content>
+	</Drawer.Root>
+
+	<!-- Desktop Sidebar -->
 	{#if $councilUIState.loading && $conversationsStore.length === 0}
-		<aside class="w-64 shrink-0 border-r bg-muted/20 p-4">
+		<aside class="hidden w-64 shrink-0 border-r bg-muted/20 p-4 md:block">
 			<div class="flex h-full items-center justify-center">
 				<Loader2 class="text-muted-foreground h-6 w-6 animate-spin" />
 			</div>
 		</aside>
 	{:else if $conversationsStore.length === 0}
-		<aside class="w-64 shrink-0 border-r bg-muted/20 p-4">
+		<aside class="hidden w-64 shrink-0 border-r bg-muted/20 p-4 md:block">
 			<div class="flex h-full flex-col items-center justify-center text-center">
 				<div class="mb-4 rounded-full bg-muted p-4">
 					<Inbox class="text-muted-foreground h-8 w-8" />
@@ -105,7 +158,7 @@
 			</div>
 		</aside>
 	{:else}
-		<aside class="w-64 shrink-0 border-r">
+		<aside class="hidden w-64 shrink-0 border-r md:block">
 			<Sidebar
 				conversations={$conversationsStore}
 				currentConversationId={$currentConversationStore?.id}
@@ -117,20 +170,20 @@
 	{/if}
 
 	<!-- Main Content -->
-	<main class="flex-1 overflow-auto p-6">
+	<main class="flex-1 overflow-auto p-4 md:p-6">
 		{#if $councilUIState.loading}
 			<div class="flex h-full items-center justify-center">
 				<Loader2 class="text-muted-foreground h-8 w-8 animate-spin" />
 			</div>
 		{:else if $currentConversationStore}
-			<div class="mb-6">
+			<div class="mb-4 md:mb-6">
 				<Button variant="ghost" size="sm" onclick={handleNew}>
 					<ArrowLeft class="mr-2 h-4 w-4" />
 					New Council
 				</Button>
 			</div>
 
-			<h2 class="mb-4 text-xl font-semibold">
+			<h2 class="mb-4 text-lg font-semibold md:text-xl">
 				{$currentConversationStore?.query?.slice(0, 100) || 'Council'}
 				{#if ($currentConversationStore?.query?.length || 0) > 100}
 					...
@@ -138,7 +191,7 @@
 			</h2>
 
 			<!-- Display stages based on conversation state -->
-			<div class="space-y-8">
+			<div class="space-y-6 md:space-y-8">
 				{#if $stage1ResponsesStore.size > 0}
 					<Stage1Panel
 						responses={$stage1ResponsesStore}
@@ -167,15 +220,15 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="flex h-full flex-col items-center justify-center text-center">
+			<div class="flex h-full min-h-[60vh] flex-col items-center justify-center text-center px-4">
 				<div class="mb-4 rounded-full bg-muted p-6">
-					<Inbox class="text-muted-foreground h-12 w-12" />
+					<Inbox class="text-muted-foreground h-10 w-10 md:h-12 md:w-12" />
 				</div>
-				<h3 class="mb-2 text-lg font-semibold">Nothing yet</h3>
-				<p class="text-muted-foreground mb-4 text-sm">
+				<h3 class="mb-2 text-base font-semibold md:text-lg">Nothing yet</h3>
+				<p class="text-muted-foreground mb-4 text-xs md:text-sm">
 					Select a conversation from the history or start a new council
 				</p>
-				<Button onclick={handleNew}>
+				<Button onclick={handleNew} size="default">
 					<Plus class="mr-2 h-4 w-4" />
 					Start New Council
 				</Button>

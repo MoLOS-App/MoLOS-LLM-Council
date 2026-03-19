@@ -25,7 +25,7 @@
 	{#if isActive}
 		<div class="flex items-center gap-2">
 			<Sparkles class="h-4 w-4 text-amber-500" />
-			<span class="font-medium">Final Synthesis</span>
+			<span class="font-medium text-sm md:text-base">Final Synthesis</span>
 			<Loader2 class="h-4 w-4 animate-spin text-primary" />
 		</div>
 	{/if}

@@ -111,7 +111,7 @@
 <div class="space-y-4">
 	<div class="flex items-center gap-2">
 		<Scale class="h-4 w-4 text-violet-500" />
-		<span class="font-medium">Peer Rankings</span>
+		<span class="font-medium text-sm md:text-base">Peer Rankings</span>
 		{#if isActive}
 			<Loader2 class="h-4 w-4 animate-spin text-primary" />
 		{/if}
@@ -120,11 +120,11 @@
 
 	{#if rankingData().length > 0}
 		<!-- Bar Chart -->
-		<div class="space-y-3">
+		<div class="space-y-3 md:space-y-4">
 			{#each rankingData() as item, i (item.personaId)}
-				<div class="flex items-center gap-3">
+				<div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
 					<!-- Rank Badge -->
-					<div class="flex w-7 shrink-0 justify-center">
+					<div class="flex w-full justify-between gap-2 md:w-7 md:shrink-0">
 						{#if i === 0}
 							<div
 								class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30"
@@ -146,16 +146,22 @@
 						{:else}
 							<span class="text-muted-foreground text-sm font-medium">#{i + 1}</span>
 						{/if}
+
+						<!-- Persona Info (mobile only) -->
+						<div class="flex items-center gap-2 md:hidden">
+							<span class="text-lg">{item.avatar}</span>
+							<span class="truncate text-sm font-medium">{item.personaName}</span>
+						</div>
 					</div>
 
-					<!-- Persona Info -->
-					<div class="flex w-28 shrink-0 items-center gap-2">
+					<!-- Persona Info (desktop) -->
+					<div class="hidden w-28 shrink-0 items-center gap-2 md:flex">
 						<span class="text-lg">{item.avatar}</span>
 						<span class="truncate text-sm font-medium">{item.personaName}</span>
 					</div>
 
 					<!-- Bar -->
-					<div class="relative flex-1">
+					<div class="relative w-full flex-1">
 						<div class="h-8 overflow-hidden rounded-lg bg-muted/50">
 							<div
 								class="h-full rounded-lg bg-gradient-to-r shadow-lg transition-all duration-500 {getBarGradient(
@@ -199,7 +205,7 @@
 		</div>
 
 		<!-- Legend -->
-		<div class="flex items-center gap-4 text-xs">
+		<div class="flex flex-wrap items-center gap-3 text-xs md:gap-4">
 			<span class="text-muted-foreground">Votes:</span>
 			{#each allRanks() as rank}
 				<div class="flex items-center gap-1.5">

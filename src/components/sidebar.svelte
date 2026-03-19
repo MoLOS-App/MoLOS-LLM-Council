@@ -38,8 +38,8 @@
 
 <div class="flex h-full flex-col">
 	<div class="flex items-center justify-between border-b p-4">
-		<h2 class="font-semibold">History</h2>
-		<Button variant="ghost" size="icon" onclick={onNew} title="New Council">
+		<h2 class="font-semibold text-base">History</h2>
+		<Button variant="ghost" size="icon" onclick={onNew} title="New Council" aria-label="New Council">
 			<Plus class="h-4 w-4" />
 		</Button>
 	</div>
@@ -57,28 +57,29 @@
 				>
 					<MessageSquare class="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm font-medium">
+						<p class="truncate text-xs font-medium sm:text-sm">
 							{getTitle(conversation)}
 						</p>
-						<div class="text-muted-foreground flex items-center gap-1 text-xs">
+						<div class="text-muted-foreground flex items-center gap-1 text-[10px] sm:text-xs">
 							<Clock class="h-3 w-3" />
-							{formatDate(conversation.updatedAt)}
+							<span class="truncate">{formatDate(conversation.updatedAt)}</span>
 						</div>
 					</div>
 					<Button
 						variant="ghost"
 						size="icon"
-						class="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+						class="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100 md:group-hover:opacity-100"
 						onclick={(e) => {
 							e.stopPropagation();
 							onDelete(conversation.id);
 						}}
+						aria-label="Delete conversation"
 					>
 						<Trash2 class="h-3 w-3 text-destructive" />
 					</Button>
 				</button>
 			{:else}
-				<div class="p-4 text-center text-sm text-muted-foreground">
+				<div class="p-4 text-center text-xs sm:text-sm text-muted-foreground">
 					No conversations yet. Start a new council!
 				</div>
 			{/each}
