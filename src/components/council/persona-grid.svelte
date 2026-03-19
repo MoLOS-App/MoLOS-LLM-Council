@@ -87,14 +87,14 @@
 					</Tooltip.Trigger>
 					<Tooltip.Portal>
 						<Tooltip.Content
-							class="z-50 max-w-xs px-3 py-2 text-sm border rounded-lg shadow-lg text-foreground bg-popover"
+							class="z-50 max-w-xs rounded-lg border bg-popover px-3 py-2 text-sm text-foreground shadow-lg"
 							sideOffset={5}
 						>
 							{#if persona.description}
-								<p class="mt-1 ">{persona.description}</p>
+								<p class="mt-1">{persona.description}</p>
 							{/if}
 							{#if persona.personalityPrompt}
-								<p class="mt-1 italic line-clamp-3">
+								<p class="mt-1 line-clamp-3 italic">
 									"{persona.personalityPrompt.slice(0, 120)}{persona.personalityPrompt.length > 120
 										? '...'
 										: ''}"
@@ -109,7 +109,7 @@
 	</div>
 
 	{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
-		<p class="mt-2 text-xs text-muted-foreground">
+		<p class="text-muted-foreground mt-2 text-xs">
 			Maximum {MAX_TOTAL_MEMBERS} members. Click to remove.
 		</p>
 	{/if}
@@ -139,32 +139,32 @@
 						>
 							<div class="flex items-center gap-3 p-3">
 								<div
-									class="flex items-center justify-center w-10 h-10 text-xl rounded-lg shrink-0 bg-muted"
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xl"
 								>
 									{persona.avatar}
 								</div>
 
-								<div class="flex-1 min-w-0">
+								<div class="min-w-0 flex-1">
 									<div class="flex items-center gap-2">
-										<span class="text-sm font-medium truncate">{persona.name}</span>
+										<span class="truncate text-sm font-medium">{persona.name}</span>
 										{#if persona.id === presidentId}
 											<span class="text-xs">👑</span>
 										{/if}
 									</div>
-									<p class="text-xs truncate text-muted-foreground">
+									<p class="text-muted-foreground truncate text-xs">
 										{persona.provider.model}
 									</p>
 								</div>
 
 								{#if isSelected}
 									<div
-										class="flex items-center justify-center w-5 h-5 rounded-full shrink-0 bg-primary"
+										class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary"
 									>
-										<span class="w-2 h-2 rounded-full bg-primary-foreground"></span>
+										<span class="h-2 w-2 rounded-full bg-primary-foreground"></span>
 									</div>
 								{:else if editable && canSelect}
 									<div
-										class="flex items-center justify-center w-5 h-5 text-sm border-2 border-dashed rounded-full text-muted-foreground/50 border-muted-foreground/30 shrink-0"
+										class="text-muted-foreground/50 border-muted-foreground/30 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-dashed text-sm"
 									>
 										+
 									</div>
@@ -174,15 +174,15 @@
 					</Tooltip.Trigger>
 					<Tooltip.Portal>
 						<Tooltip.Content
-							class="z-50 max-w-xs px-3 py-2 text-sm border rounded-lg shadow-lg bg-popover"
+							class="z-50 max-w-xs rounded-lg border bg-popover px-3 py-2 text-sm shadow-lg"
 							sideOffset={5}
 						>
 							<p class="font-medium">{persona.name}</p>
 							{#if persona.description}
-								<p class="mt-1 text-xs text-muted-foreground">{persona.description}</p>
+								<p class="text-muted-foreground mt-1 text-xs">{persona.description}</p>
 							{/if}
 							{#if persona.personalityPrompt}
-								<p class="mt-1 text-xs italic text-muted-foreground line-clamp-3">
+								<p class="text-muted-foreground mt-1 line-clamp-3 text-xs italic">
 									"{persona.personalityPrompt.slice(0, 120)}{persona.personalityPrompt.length > 120
 										? '...'
 										: ''}"
@@ -197,7 +197,7 @@
 	</div>
 
 	{#if editable && selectedIds.length >= MAX_TOTAL_MEMBERS}
-		<p class="mt-3 text-sm text-center text-muted-foreground">
+		<p class="text-muted-foreground mt-3 text-center text-sm">
 			Maximum {MAX_TOTAL_MEMBERS} council members. Click to remove.
 		</p>
 	{/if}

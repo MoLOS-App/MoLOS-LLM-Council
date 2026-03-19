@@ -9,8 +9,16 @@
 	let { currentStage }: Props = $props();
 
 	const stages = [
-		{ id: PersonaConversationStage.INITIAL_RESPONSES, label: 'Initial Responses', description: 'Gather perspectives' },
-		{ id: PersonaConversationStage.PEER_REVIEW, label: 'Peer Review', description: 'Rank and evaluate' },
+		{
+			id: PersonaConversationStage.INITIAL_RESPONSES,
+			label: 'Initial Responses',
+			description: 'Gather perspectives'
+		},
+		{
+			id: PersonaConversationStage.PEER_REVIEW,
+			label: 'Peer Review',
+			description: 'Rank and evaluate'
+		},
 		{ id: PersonaConversationStage.SYNTHESIS, label: 'Synthesis', description: 'Combine insights' },
 		{ id: PersonaConversationStage.COMPLETED, label: 'Complete', description: 'Decision ready' }
 	];
@@ -23,7 +31,11 @@
 
 <div class="stage-progress">
 	{#each stages as stage, index}
-		<div class="stage-item {currentStage === stage.id ? 'active' : ''} {isComplete(stage.id, index) ? 'complete' : ''}">
+		<div
+			class="stage-item {currentStage === stage.id ? 'active' : ''} {isComplete(stage.id, index)
+				? 'complete'
+				: ''}"
+		>
 			<div class="stage-indicator">
 				{#if isComplete(stage.id, index)}
 					<CheckCircle2 size={24} />

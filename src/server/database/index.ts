@@ -1,4 +1,4 @@
 /**
  * LLM Council Database - Public exports
  */
-export * from "./schema.js";
+export * from './schema.js';

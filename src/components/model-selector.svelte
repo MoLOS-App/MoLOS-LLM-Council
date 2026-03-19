@@ -56,13 +56,13 @@
 <div class="space-y-4">
 	<!-- Search -->
 	<div class="relative">
-		<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+		<Search class="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
 		<Input
 			type="text"
 			placeholder="Search models..."
 			bind:value={searchQuery}
 			class="pl-9"
-			disabled={disabled}
+			{disabled}
 		/>
 	</div>
 
@@ -76,7 +76,7 @@
 						type="button"
 						class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary hover:bg-primary/20"
 						onclick={() => toggleModel(modelId)}
-						disabled={disabled}
+						{disabled}
 					>
 						<span class="max-w-[150px] truncate">{getModelName(modelId)}</span>
 						<span class="text-xs opacity-70">&times;</span>
@@ -98,10 +98,10 @@
 				onclick={() => toggleModel(model.id)}
 				disabled={disabled || (!isSelected && !canAddMore)}
 			>
-				<Checkbox checked={isSelected} disabled={disabled} />
+				<Checkbox checked={isSelected} {disabled} />
 				<div class="flex-1 overflow-hidden">
 					<p class="truncate font-medium">{model.name}</p>
-					<p class="truncate text-xs text-muted-foreground">{model.id}</p>
+					<p class="text-muted-foreground truncate text-xs">{model.id}</p>
 				</div>
 			</button>
 		{:else}
@@ -117,7 +117,7 @@
 				class="w-full rounded-md border bg-background px-3 py-2 text-sm"
 				value={synthesizerModel}
 				onchange={(e) => onSynthesizerChange((e.target as HTMLSelectElement).value)}
-				disabled={disabled}
+				{disabled}
 			>
 				{#each availableModels as model}
 					<option value={model.id}>{model.name}</option>

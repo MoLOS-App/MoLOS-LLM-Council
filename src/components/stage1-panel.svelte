@@ -47,17 +47,17 @@
 
 <div class="space-y-3">
 	<div class="flex items-center gap-2">
-		<Users class="w-4 h-4 text-blue-500" />
+		<Users class="h-4 w-4 text-blue-500" />
 		<span class="font-medium">Initial Responses</span>
 		{#if isActive}
-			<Loader2 class="w-4 h-4 animate-spin text-primary" />
+			<Loader2 class="h-4 w-4 animate-spin text-primary" />
 		{/if}
-		<span class="text-xs text-muted-foreground">({responseList().length})</span>
+		<span class="text-muted-foreground text-xs">({responseList().length})</span>
 	</div>
 
 	{#if responseList().length > 0}
 		<Tabs bind:value={selectedTab} class="w-full">
-			<TabsList class="flex-wrap justify-start h-auto gap-1 p-0 bg-transparent">
+			<TabsList class="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
 				{#each responseList() as response (response.personaId)}
 					<TabsTrigger
 						value={response.personaId}
@@ -68,7 +68,7 @@
 						{/if}
 						<span class="text-sm">{response.personaName}</span>
 						{#if isActive && !response.content}
-							<Loader2 class="w-3 h-3 animate-spin" />
+							<Loader2 class="h-3 w-3 animate-spin" />
 						{/if}
 					</TabsTrigger>
 				{/each}
@@ -88,14 +88,14 @@
 			{/each}
 		</Tabs>
 	{:else if isActive}
-		<div class="flex items-center justify-center p-6 border border-dashed rounded-lg">
+		<div class="flex items-center justify-center rounded-lg border border-dashed p-6">
 			<div class="text-center">
-				<Loader2 class="w-6 h-6 mx-auto mb-2 animate-spin text-primary" />
-				<p class="text-sm text-muted-foreground">Gathering responses...</p>
+				<Loader2 class="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
+				<p class="text-muted-foreground text-sm">Gathering responses...</p>
 			</div>
 		</div>
 	{:else if !isComplete}
-		<div class="p-4 text-sm text-center border border-dashed rounded-lg text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
 			Waiting to start...
 		</div>
 	{/if}

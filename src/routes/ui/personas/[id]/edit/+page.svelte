@@ -17,7 +17,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { ArrowLeft, Save, Loader2, Crown, Sparkles, Trash2 } from 'lucide-svelte';
-	import type { PersonaWithProvider, AIProvider } from '../../../../../models/index.js';
+	import type { PersonaWithProvider, AIProvider } from '$module/models/index.js';
 
 	interface PageData {
 		persona: PersonaWithProvider;
@@ -126,7 +126,6 @@
 </script>
 
 <div class="flex h-full flex-col">
-
 	<!-- Main Content - Full Width, Scrollable -->
 	<div class="flex-1 overflow-auto p-4 pb-24">
 		{#if error}
@@ -137,9 +136,9 @@
 			</div>
 		{/if}
 
-		<div class="flex flex-col gap-6 md:flex-row m-auto">
+		<div class="m-auto flex flex-col gap-6 md:flex-row">
 			<!-- Left Column: Avatar and Quick Settings -->
-			<div class="space-y-6 w-auto">
+			<div class="w-auto space-y-6">
 				<!-- Avatar Card -->
 				<Card>
 					<CardHeader>
@@ -247,7 +246,7 @@
 			</div>
 
 			<!-- Right Column: Main Content -->
-			<div class="space-y-6 w-full">
+			<div class="w-full space-y-6">
 				<!-- Basic Info Card -->
 				<Card>
 					<CardHeader>

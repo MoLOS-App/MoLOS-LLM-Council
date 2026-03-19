@@ -15,7 +15,18 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Loader2, Save, Key, Plus, Trash2, Edit, CheckCircle, ArrowLeft, X, Copy } from 'lucide-svelte';
+	import {
+		Loader2,
+		Save,
+		Key,
+		Plus,
+		Trash2,
+		Edit,
+		CheckCircle,
+		ArrowLeft,
+		X,
+		Copy
+	} from 'lucide-svelte';
 	import { loadSettings, updateSettings } from '../../../stores/council.store.js';
 	import type { AIProvider, ProviderType } from '../../../models/index.js';
 
@@ -621,7 +632,9 @@
 								step={256}
 								bind:value={maxTokensStage1}
 							/>
-							<p class="text-muted-foreground text-xs">Tokens per persona response (default: 1024)</p>
+							<p class="text-muted-foreground text-xs">
+								Tokens per persona response (default: 1024)
+							</p>
 						</div>
 
 						<div class="space-y-2">
@@ -647,7 +660,9 @@
 								step={512}
 								bind:value={maxTokensStage3}
 							/>
-							<p class="text-muted-foreground text-xs">Tokens for final synthesis (default: 4096)</p>
+							<p class="text-muted-foreground text-xs">
+								Tokens for final synthesis (default: 4096)
+							</p>
 						</div>
 					</CardContent>
 				</Card>

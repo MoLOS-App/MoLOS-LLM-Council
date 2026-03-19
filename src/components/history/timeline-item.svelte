@@ -19,16 +19,20 @@
 
 	let { conversation, messages, expanded, onToggle, onClick }: Props = $props();
 
-	const date = $derived(new Date(conversation.createdAt * 1000).toLocaleDateString('en-US', {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric'
-	}));
+	const date = $derived(
+		new Date(conversation.createdAt * 1000).toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		})
+	);
 
-	const time = $derived(new Date(conversation.createdAt * 1000).toLocaleTimeString('en-US', {
-		hour: 'numeric',
-		minute: '2-digit'
-	}));
+	const time = $derived(
+		new Date(conversation.createdAt * 1000).toLocaleTimeString('en-US', {
+			hour: 'numeric',
+			minute: '2-digit'
+		})
+	);
 </script>
 
 <div class="timeline-item">
@@ -46,7 +50,13 @@
 					{conversation.selectedPersonaIds.length} members
 				</div>
 			</div>
-			<button class="expand-btn" onclick={(e) => { e.stopPropagation(); onToggle(); }}>
+			<button
+				class="expand-btn"
+				onclick={(e) => {
+					e.stopPropagation();
+					onToggle();
+				}}
+			>
 				{#if expanded}
 					<ChevronUp size={18} />
 				{:else}

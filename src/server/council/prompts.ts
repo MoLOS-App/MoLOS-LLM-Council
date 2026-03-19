@@ -55,43 +55,40 @@ Guidelines:
  * Default prompts object
  */
 export const DEFAULT_PROMPTS = {
-  stage1: STAGE_1_SYSTEM_PROMPT,
-  stage2: STAGE_2_SYSTEM_PROMPT,
-  stage3: STAGE_3_SYSTEM_PROMPT,
+	stage1: STAGE_1_SYSTEM_PROMPT,
+	stage2: STAGE_2_SYSTEM_PROMPT,
+	stage3: STAGE_3_SYSTEM_PROMPT
 } as const;
 
 /**
  * Build stage 1 prompt with user query
  */
-export function buildStage1Prompt(
-  query: string,
-  customPrompt?: string,
-): string {
-  const basePrompt = customPrompt || STAGE_1_SYSTEM_PROMPT;
-  return `${basePrompt}\n\n---\n\nUser Question:\n${query}`;
+export function buildStage1Prompt(query: string, customPrompt?: string): string {
+	const basePrompt = customPrompt || STAGE_1_SYSTEM_PROMPT;
+	return `${basePrompt}\n\n---\n\nUser Question:\n${query}`;
 }
 
 /**
  * Build stage 2 prompt with all responses
  */
 export function buildStage2Prompt(
-  query: string,
-  responses: Array<{ modelId: string; modelName: string; content: string }>,
-  customPrompt?: string,
+	query: string,
+	responses: Array<{ modelId: string; modelName: string; content: string }>,
+	customPrompt?: string
 ): string {
-  const basePrompt = customPrompt || STAGE_2_SYSTEM_PROMPT;
+	const basePrompt = customPrompt || STAGE_2_SYSTEM_PROMPT;
 
-  const responsesText = responses
-    .map(
-      (r, i) => `
+	const responsesText = responses
+		.map(
+			(r, i) => `
 ---
 Response ${i + 1} (Model: ${r.modelName}, ID: ${r.modelId}):
 ${r.content}
-`,
-    )
-    .join("\n");
+`
+		)
+		.join('\n');
 
-  return `${basePrompt}
+	return `${basePrompt}
 
 Original Question:
 ${query}
@@ -105,42 +102,42 @@ Now provide your rankings as JSON.`;
  * Build stage 3 prompt with all data
  */
 export function buildStage3Prompt(
-  query: string,
-  responses: Array<{ modelId: string; modelName: string; content: string }>,
-  rankings: Array<{
-    reviewerModelId: string;
-    reviewerModelName: string;
-    rankings: Array<{ modelId: string; rank: number; reasoning?: string }>;
-  }>,
-  customPrompt?: string,
+	query: string,
+	responses: Array<{ modelId: string; modelName: string; content: string }>,
+	rankings: Array<{
+		reviewerModelId: string;
+		reviewerModelName: string;
+		rankings: Array<{ modelId: string; rank: number; reasoning?: string }>;
+	}>,
+	customPrompt?: string
 ): string {
-  const basePrompt = customPrompt || STAGE_3_SYSTEM_PROMPT;
+	const basePrompt = customPrompt || STAGE_3_SYSTEM_PROMPT;
 
-  const responsesText = responses
-    .map(
-      (r, i) => `
+	const responsesText = responses
+		.map(
+			(r, i) => `
 ---
 Response ${i + 1} (Model: ${r.modelName}, ID: ${r.modelId}):
 ${r.content}
-`,
-    )
-    .join("\n");
+`
+		)
+		.join('\n');
 
-  const rankingsText = rankings
-    .map(
-      (r) => `
+	const rankingsText = rankings
+		.map(
+			(r) => `
 Rankings by ${r.reviewerModelName}:
 ${r.rankings
-  .map(
-    (rank) =>
-      `  - ${rank.modelId}: Rank ${rank.rank}${rank.reasoning ? ` - ${rank.reasoning}` : ""}`,
-  )
-  .join("\n")}
-`,
-    )
-    .join("\n");
+	.map(
+		(rank) =>
+			`  - ${rank.modelId}: Rank ${rank.rank}${rank.reasoning ? ` - ${rank.reasoning}` : ''}`
+	)
+	.join('\n')}
+`
+		)
+		.join('\n');
 
-  return `${basePrompt}
+	return `${basePrompt}
 
 Original Question:
 ${query}

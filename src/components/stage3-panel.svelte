@@ -22,13 +22,13 @@
 </script>
 
 <div class="space-y-3">
-		{#if isActive}
-	<div class="flex items-center gap-2">
-		<Sparkles class="w-4 h-4 text-amber-500" />
-		<span class="font-medium">Final Synthesis</span>
-			<Loader2 class="w-4 h-4 animate-spin text-primary" />
-	</div>
-		{/if}
+	{#if isActive}
+		<div class="flex items-center gap-2">
+			<Sparkles class="h-4 w-4 text-amber-500" />
+			<span class="font-medium">Final Synthesis</span>
+			<Loader2 class="h-4 w-4 animate-spin text-primary" />
+		</div>
+	{/if}
 
 	{#if content || isActive}
 		<ResponseCard
@@ -40,11 +40,11 @@
 			isSynthesis={true}
 		/>
 	{:else if isComplete}
-		<div class="p-3 text-xs text-center border border-dashed rounded-lg text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-3 text-center text-xs">
 			Synthesis complete but no content generated
 		</div>
 	{:else}
-		<div class="p-3 text-xs text-center border border-dashed rounded-lg text-muted-foreground">
+		<div class="text-muted-foreground rounded-lg border border-dashed p-3 text-center text-xs">
 			Synthesis begins after Stage 2
 		</div>
 	{/if}

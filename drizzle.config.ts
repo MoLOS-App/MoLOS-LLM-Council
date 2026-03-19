@@ -1,4 +1,4 @@
-import { defineConfig } from "drizzle-kit";
+import { defineConfig } from 'drizzle-kit';
 
 /**
  * Module Drizzle Configuration
@@ -30,11 +30,11 @@ import { defineConfig } from "drizzle-kit";
  * See documentation/adr/003-migration-auto-generation-ban.md for details.
  */
 export default defineConfig({
-  schema: "./src/server/database/schema.ts",
-  out: "./drizzle",
-  dialect: "sqlite",
-  // Use internal tracking database for migration generation
-  dbCredentials: { url: "file:./.drizzle/tracking.db" },
-  verbose: true,
-  strict: true,
+	schema: './src/server/database/schema.ts',
+	out: './drizzle',
+	dialect: 'sqlite',
+	// Use internal tracking database for migration generation
+	dbCredentials: { url: 'file:./.drizzle/tracking.db' },
+	verbose: true,
+	strict: true
 });

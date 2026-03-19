@@ -1,27 +1,27 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1740457740000,
-      "tag": "0000_drop_old_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1740457741000,
-      "tag": "0001_schema_migration",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1740457742000,
-      "tag": "0002_add_max_tokens",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1740457740000,
+			"tag": "0000_drop_old_tables",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1740457741000,
+			"tag": "0001_schema_migration",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1740457742000,
+			"tag": "0002_add_max_tokens",
+			"breakpoints": true
+		}
+	]
 }
