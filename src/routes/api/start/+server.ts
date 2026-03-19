@@ -1,4 +1,4 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { SettingsRepository } from '../../../server/repositories/settings-repository';
@@ -30,7 +30,7 @@ const StartCouncilSchema = z.object({
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const userId = locals.user?.id;
 	if (!userId) {
-		throw error(401, 'Unauthorized');
+		return json({ success: false, error: 'Unauthorized' }, { status: 401 });
 	}
 
 	try {
@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		const result = StartCouncilSchema.safeParse(body);
 
 		if (!result.success) {
-			throw error(400, result.error.issues[0].message);
+			return json({ success: false, error: result.error.issues[0].message }, { status: 400 });
 		}
 
 		const { query, personaIds, presidentPersonaId, conversationId, streamingEnabled } = result.data;
@@ -64,16 +64,19 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		);
 
 		if (selectedPersonas.length === 0) {
-			throw error(400, 'No personas selected or personas not found');
+			return json({ success: false, error: 'No personas selected or personas not found' }, { status: 400 });
 		}
 
 		// Check that all personas have valid providers with API tokens
 		for (const persona of selectedPersonas) {
 			if (!persona.provider?.apiToken) {
 				console.error('[Council] Persona missing provider/API token:', persona.name);
-				throw error(
-					400,
-					`Persona "${persona.name}" has no configured provider or API token. Please configure providers in Settings.`
+				return json(
+					{
+						success: false,
+						error: `Persona "${persona.name}" has no configured provider or API token. Please configure providers in Settings.`
+					},
+					{ status: 400 }
 				);
 			}
 
@@ -106,9 +109,12 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		if (presidentPersona && !presidentPersona.provider?.apiToken) {
 			console.error('[Council] President missing provider/API token');
-			throw error(
-				400,
-				'President persona has no configured provider or API token. Please configure providers in Settings.'
+			return json(
+				{
+					success: false,
+					error: 'President persona has no configured provider or API token. Please configure providers in Settings.'
+				},
+				{ status: 400 }
 			);
 		}
 
@@ -140,7 +146,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		if (conversationId) {
 			conversation = await conversationRepo.getById(conversationId, userId);
 			if (!conversation) {
-				throw error(404, 'Conversation not found');
+				return json({ success: false, error: 'Conversation not found' }, { status: 404 });
 			}
 		} else {
 			// Create new conversation

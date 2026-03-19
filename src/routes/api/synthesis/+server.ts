@@ -2,8 +2,11 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { PersonaRepository } from '../../../server/repositories/persona-repository';
+import { MessageRepository } from '../../../server/repositories/message-repository';
+import { ConversationRepository } from '../../../server/repositories/conversation-repository';
 import { createAIClient } from '../../../server/council/ai-client';
 import { SettingsRepository } from '../../../server/repositories/settings-repository';
+import { PersonaConversationStage } from '../../../models';
 import { db } from '$lib/server/db';
 
 const SynthesisRequestSchema = z.object({
@@ -17,6 +20,7 @@ const SynthesisRequestSchema = z.object({
 			})
 		)
 		.min(1, 'At least one response is required'),
+	conversationId: z.string().optional(),
 	maxTokens: z.number().optional()
 });
 
@@ -38,7 +42,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw error(400, result.error.issues[0].message);
 		}
 
-		const { presidentPersonaId, responses, maxTokens } = result.data;
+		const { presidentPersonaId, responses, conversationId, maxTokens } = result.data;
 
 		// Get president persona with provider
 		const personaRepo = new PersonaRepository(db);
@@ -86,6 +90,25 @@ ${responsesText}`;
 			messages: [{ role: 'user', content: synthesisPrompt }],
 			max_tokens: tokens
 		});
+
+		// Save to database and update conversation if conversationId provided
+		if (conversationId) {
+			const messageRepo = new MessageRepository(db);
+			const conversationRepo = new ConversationRepository(db);
+
+			// Save synthesis message
+			await messageRepo.create({
+				userId,
+				conversationId,
+				personaId: president.id,
+				role: 'assistant',
+				content,
+				stage: PersonaConversationStage.SYNTHESIS
+			});
+
+			// Update conversation to completed
+			await conversationRepo.updateStage(conversationId, userId, PersonaConversationStage.COMPLETED);
+		}
 
 		return json({
 			success: true,

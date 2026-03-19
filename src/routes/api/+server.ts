@@ -81,12 +81,23 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		const { query, selectedPersonaIds, presidentPersonaId, title } = result.data;
 
 		const conversationRepo = new ConversationRepository(db);
+		const messageRepo = new MessageRepository(db);
+
 		const conversation = await conversationRepo.create(
 			userId,
 			query,
 			selectedPersonaIds,
 			presidentPersonaId
 		);
+
+		// Save the user message so the conversation has content from the start
+		await messageRepo.create({
+			userId,
+			conversationId: conversation.id,
+			role: 'user',
+			content: query,
+			stage: PersonaConversationStage.INITIAL_RESPONSES
+		});
 
 		return json({ conversation }, { status: 201 });
 	} catch (err) {

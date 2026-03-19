@@ -153,8 +153,8 @@ export async function loadConversation(conversationId: string) {
 }
 
 /**
- * Start a council session
- * Uses the /start endpoint which handles DB persistence
+ * Start a council session with progressive updates
+ * Creates conversation first, then calls individual endpoints for each stage
  */
 export async function startCouncil(
 	query: string,
@@ -174,22 +174,80 @@ export async function startCouncil(
 		currentStage: PCS.INITIAL_RESPONSES
 	}));
 
+	const errors: string[] = [];
+
 	try {
-		// Call the /start endpoint which handles full council execution + DB persistence
-		const response = await fetch(`${API_BASE}/start`, {
+		// Load personas to get their details
+		const personasData = await apiFetch<{ personas: PersonaWithProvider[] }>('/personas');
+		const selectedPersonas = personasData.personas.filter((p) => personaIds?.includes(p.id));
+		const presidentPersona = personasData.personas.find((p) => p.id === presidentPersonaId);
+
+		if (selectedPersonas.length === 0) {
+			councilUIState.update((s) => ({
+				...s,
+				isProcessing: false,
+				isStreaming: false,
+				error: 'No personas selected'
+			}));
+			return { success: false, error: 'No personas selected' };
+		}
+
+		// Create conversation first (for DB persistence)
+		const conversationData = await apiFetch<{ conversation: { id: string } }>('', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				query,
-				personaIds,
+				selectedPersonaIds: personaIds,
 				presidentPersonaId
 			})
 		});
+		const conversationId = conversationData.conversation.id;
 
-		const data = await response.json();
+		// === STAGE 1: Get responses from each persona (parallel, update as they complete) ===
+		const stage1Responses: Array<{ personaId: string; personaName: string; content: string }> = [];
 
-		if (!response.ok || data.success === false) {
-			const errorMsg = data.error || 'Failed to start council';
+		const stage1Promises = selectedPersonas.map(async (persona) => {
+			try {
+				const response = await fetch(`${API_BASE}/response`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						personaId: persona.id,
+						query,
+						conversationId // Pass for DB persistence
+					})
+				});
+
+				const data = await response.json();
+
+				if (!response.ok || data.success === false) {
+					const errorMsg = data.error || `Failed to get response from ${persona.name}`;
+					errors.push(errorMsg);
+					return null;
+				}
+
+				// Update the store immediately as each response comes in
+				stage1ResponsesStore.update((map) => {
+					const newMap = new Map(map);
+					newMap.set(data.response.personaId, data.response.content);
+					return newMap;
+				});
+
+				stage1Responses.push(data.response);
+				return data.response;
+			} catch (err) {
+				const errorMsg =
+					err instanceof Error ? err.message : `Failed to get response from ${persona.name}`;
+				errors.push(errorMsg);
+				return null;
+			}
+		});
+
+		await Promise.all(stage1Promises);
+
+		// Check if we have any successful responses
+		if (stage1Responses.length === 0) {
+			const errorMsg = errors.length > 0 ? errors[0] : 'Failed to get any responses';
 			councilUIState.update((s) => ({
 				...s,
 				isProcessing: false,
@@ -199,21 +257,75 @@ export async function startCouncil(
 			return { success: false, error: errorMsg };
 		}
 
-		// Populate stage stores from result
-		const result = data.result;
-
-		// Stage 1 responses
-		const stage1Map = new Map<string, string>();
-		for (const r of result.stage1Responses || []) {
-			stage1Map.set(r.personaId, r.content);
+		// Show warning if some failed
+		if (errors.length > 0) {
+			console.warn('[Council] Some responses failed:', errors);
 		}
-		stage1ResponsesStore.set(stage1Map);
 
-		// Stage 2 rankings
-		stage2RankingsStore.set(result.stage2Rankings || []);
+		// === STAGE 2: Get rankings from each persona (parallel, update as they complete) ===
+		councilUIState.update((s) => ({ ...s, currentStage: PCS.PEER_REVIEW }));
 
-		// Stage 3 synthesis
-		stage3SynthesisStore.set(result.stage3Synthesis || '');
+		const stage2Rankings: Stage2Ranking[] = [];
+
+		const stage2Promises = selectedPersonas.map(async (persona) => {
+			try {
+				const response = await fetch(`${API_BASE}/ranking`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						personaId: persona.id,
+						responses: stage1Responses,
+						conversationId // Pass for DB persistence
+					})
+				});
+
+				const data = await response.json();
+
+				if (!response.ok || data.success === false) {
+					// Don't fail the whole council for ranking errors
+					console.warn(`Ranking failed for ${persona.name}:`, data.error);
+					return null;
+				}
+
+				// Update the store immediately as each ranking comes in
+				stage2RankingsStore.update((rankings) => [...rankings, data.ranking]);
+
+				stage2Rankings.push(data.ranking);
+				return data.ranking;
+			} catch (err) {
+				console.warn(`Ranking failed for ${persona.name}:`, err);
+				return null;
+			}
+		});
+
+		await Promise.all(stage2Promises);
+
+		// === STAGE 3: Synthesis by president ===
+		councilUIState.update((s) => ({ ...s, currentStage: PCS.SYNTHESIS }));
+
+		if (presidentPersona && stage1Responses.length > 0) {
+			try {
+				const response = await fetch(`${API_BASE}/synthesis`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						presidentPersonaId: presidentPersona.id,
+						responses: stage1Responses,
+						conversationId // Pass for DB persistence (also marks conversation complete)
+					})
+				});
+
+				const data = await response.json();
+
+				if (!response.ok || data.success === false) {
+					console.warn('Synthesis failed:', data.error);
+				} else {
+					stage3SynthesisStore.set(data.synthesis);
+				}
+			} catch (err) {
+				console.warn('Synthesis failed:', err);
+			}
+		}
 
 		// Mark as complete
 		councilUIState.update((s) => ({
@@ -223,7 +335,12 @@ export async function startCouncil(
 			currentStage: PCS.COMPLETED
 		}));
 
-		return { success: true, conversationId: data.conversationId };
+		// Return first error if any (but don't fail - partial results are still useful)
+		if (errors.length > 0) {
+			return { success: true, warning: errors[0], conversationId };
+		}
+
+		return { success: true, conversationId };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Failed to start council';
 		councilUIState.update((s) => ({
