@@ -2,7 +2,7 @@
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import { User, Bot, Trophy, Sparkles, Loader2 } from 'lucide-svelte';
-	import { marked } from 'marked';
+	import MarkdownDisplayer from '$lib/components/shared/markdown-displayer.svelte';
 
 	interface Props {
 		modelId?: string;
@@ -38,21 +38,6 @@
 	}
 
 	const displayName = $derived(modelName || getModelDisplayName(modelId));
-
-	// Configure marked for safe rendering
-	marked.setOptions({
-		gfm: true,
-		breaks: true
-	});
-
-	function renderMarkdown(text: string): string {
-		if (!text) return '';
-		try {
-			return marked.parse(text) as string;
-		} catch {
-			return text;
-		}
-	}
 </script>
 
  {#if compact}
@@ -85,19 +70,13 @@
 					<Loader2 class="h-4 w-4 animate-spin" />
 					<span class="text-sm">Thinking...</span>
 				</div>
-			{:else}
-				<div
-					class="prose prose-sm prose-p:text-sm prose-headings:text-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 break-words"
-				>
-					{#if content}
-						{@html renderMarkdown(content)}
-					{:else}
-						<p class="text-muted-foreground text-sm">Waiting for response...</p>
-					{/if}
-				</div>
+			{:else if content}
+				<MarkdownDisplayer source={content} class="prose-p:text-sm prose-headings:text-sm prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1" />
 				{#if isStreaming}
 					<span class="mt-2 inline-block h-4 w-1 animate-pulse bg-primary"></span>
 				{/if}
+			{:else}
+				<p class="text-muted-foreground text-sm">Waiting for response...</p>
 			{/if}
 		</div>
 	</div>
@@ -135,23 +114,19 @@
 			</div>
 		</CardHeader>
 		<CardContent>
-			<div class="prose prose-sm prose-headings:text-base prose-p:text-sm prose-ul:text-sm prose-ol:text-sm dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-3 prose-code:text-xs prose-pre:text-xs prose-img:max-w-full prose-hr:my-4">
-				{#if !content && isStreaming}
-					<div class="text-muted-foreground flex items-center gap-2">
-						<Loader2 class="h-4 w-4 animate-spin" />
-						<span class="text-sm">Thinking...</span>
-					</div>
-				{:else}
-					{#if content}
-						{@html renderMarkdown(content)}
-					{:else}
-						<p class="text-muted-foreground">Waiting for response...</p>
-					{/if}
-					{#if isStreaming}
-						<span class="mt-2 inline-block h-4 w-1 animate-pulse bg-primary"></span>
-					{/if}
+			{#if !content && isStreaming}
+				<div class="text-muted-foreground flex items-center gap-2">
+					<Loader2 class="h-4 w-4 animate-spin" />
+					<span class="text-sm">Thinking...</span>
+				</div>
+			{:else if content}
+				<MarkdownDisplayer source={content} />
+				{#if isStreaming}
+					<span class="mt-2 inline-block h-4 w-1 animate-pulse bg-primary"></span>
 				{/if}
-			</div>
+			{:else}
+				<p class="text-muted-foreground">Waiting for response...</p>
+			{/if}
 		</CardContent>
 	</Card>
 {/if}
